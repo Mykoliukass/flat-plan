@@ -278,10 +278,6 @@ function build() {
   const items = P.layouts.bathroom[layoutName] || [];
   if (S && layoutName.startsWith("C")) {
     bathroomFinishes(WH);
-    // rug in front of the vanity
-    const r = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.6), tmat("rug", 1, 1));
-    r.rotation.x = -Math.PI / 2; r.position.set(4.40, 0.004, 6.42); world.add(r);
-    r.userData.label = "rug"; pickables.push(r);
   }
   items.forEach(it => addItem(it, WH));
 }
@@ -356,16 +352,15 @@ function addItem(it, WH) {
     case "mirror":
       if (WH > (it.z0??1.1)) {
         const z0 = it.z0??1.1, z1 = clip(it.z1??1.85);
-        if (S) {  // brass-framed mirror cabinet + two warm sconces
-          box(x+0.12,y,w-0.24,h,z0,z1,brass(),"mirror cabinet, brass frame (socket inside)");
-          box(x+0.14,y+h,w-0.28,0.004,z0+0.02,z1-0.02,new THREE.MeshPhongMaterial({color:PAL.mirror,shininess:120,specular:0xffffff}),"mirror");
-          [x+0.05, x+w-0.05].forEach(sx => {
-            box(sx-0.02,y,0.04,0.06,1.50,1.62,brass(),"brass wall sconce");
-            const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.035,0.14,24),
-                       new THREE.MeshBasicMaterial({color:0xfff1d0}));
-            sh.position.set(sx, 1.70, y+0.09); world.add(sh);
-            const L = new THREE.PointLight(0xffcf8a, 0.35, 2.5); L.position.set(sx, 1.70, y+0.15); world.add(L);
-          });
+        if (S) {  // ROUND mirror cabinet (owner): Ø70 cm, 12 cm deep, brass rim, centred over the basin
+          const D = 0.70, R = D / 2, depth = 0.12, cx = x + w / 2, cz = (z0 + z1) / 2;
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, depth, 64), brass());
+          body.rotation.x = Math.PI / 2; body.position.set(cx, cz, y + depth / 2); world.add(body);
+          body.userData.label = "round mirror cabinet Ø70, brass rim (shelves + socket inside)"; pickables.push(body);
+          const face = new THREE.Mesh(new THREE.CircleGeometry(R - 0.02, 64),
+                       new THREE.MeshPhongMaterial({color:PAL.mirror, shininess:120, specular:0xffffff}));
+          face.position.set(cx, cz, y + depth + 0.002); world.add(face);
+          face.userData.label = "mirror (door of the round cabinet)"; pickables.push(face);
         } else box(x,y,w,h,z0,z1,C.mirror,"mirror cabinet (socket inside)");
       }
       break;
