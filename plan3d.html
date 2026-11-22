@@ -45,7 +45,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="plan-data.js?v=2026-11-22e"></script>
+<script src="plan-data.js?v=2026-11-22f"></script>
 <script>
 /* Plan coordinates (x east, y south, metres) map to three.js as  x → x,  y → z,  height → y. */
 const P = window.PLAN;
@@ -177,9 +177,8 @@ function bathroomFinishes(WH) {
   tileWall(3.85, 5.59 + o, 6.49, 5.59 + o, 0, WH);          // north wall (bedroom side), incl. bath alcove
   tileWall(6.49 - o, 5.59, 6.49 - o, 7.395, 0, WH);         // east (outer) wall in the bath alcove
   tileWall(5.42, 7.395 - o, 6.49, 7.395 - o, 0, WH);        // back wall: bath end + shaft face beside WC
-  // WC recess: tiles on the frame front up to 1.20, recessed walnut cabinet 1.20–2.15 stays visible, tiles above
-  tileWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);
-  tileWall(4.87, 7.395 - o, 5.42, 7.395 - o, 2.15, WH);
+  // WC recess: tiles on the frame front up to 1.20, recessed walnut cabinet from 1.20 to the ceiling
+  tileWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);   // above 1.20 the walnut cabinet runs to the ceiling
   tileWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);          // corridor wall behind the laundry bay
   tileWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);          // west wall, either side of the doorway
   tileWall(3.85 + o, 7.08, 3.85 + o, 7.88, 0, WH);
@@ -288,7 +287,7 @@ function build() {
 }
 
 function addItem(it, WH) {
-  const {k,x,y,w,h,label} = it, clip = z => Math.min(z, Math.max(WH, 2.3));
+  const {k,x,y,w,h,label} = it, clip = z => z === "ceiling" ? WH : Math.min(z, Math.max(WH, 2.3));
   // material helpers: styled vs plain
   const WAL = (a,b) => S ? tmat("walnut",a,b) : C.wood;
   const MET = () => S ? brass() : C.steel;

@@ -113,19 +113,19 @@ window.PLAN = {
         { k:"note",   x:6.09, y:7.20, label:"mixer + shower" },
         // ONE FLUSH BACK WALL at y = 7.395 (the shaft's own front face, where the bath ends).
         // Everything is built back to that plane — nothing projects except the washer/dryer.
-        // z0/z1 = bottom/top height above floor (m), used by the 3D view
+        // z0/z1 = bottom/top height above floor (m), used by the 3D view; z1:"ceiling" = full height (owner: walnut runs to the ceiling)
         // WC frame sits in the 12.5 cm × 55 cm recess of the shaft (x 4.87–5.42) → needs a slim 8 cm concealed cistern
         { k:"box",    x:4.87, y:7.395,w:0.55, h:0.125,z0:0,    z1:1.20, label:"", role:"frame" },
         { k:"wc",     x:4.965,y:6.875,w:0.36, h:0.52, label:"wall-hung WC" },
         // cabinet in the same recess, above the cistern, flush with the wall (12.5 cm deep)
-        { k:"upper",  x:4.87, y:7.395,w:0.55, h:0.125,z0:1.20, z1:2.15, label:"recessed cabinet above WC" },
+        { k:"upper",  x:4.87, y:7.395,w:0.55, h:0.125,z0:1.20, z1:"ceiling", label:"recessed cabinet above WC" },
         // Laundry corner: standard 60 cm machines stick out ~11.5 cm past the wall plane
         { k:"washer", x:3.86, y:7.28, w:0.60, h:0.60, stacked:true, label:"washer + dryer" },
         // walnut laundry bay: cabinet above comes forward to the machine fronts + side panel on the open side
-        { k:"upper",  x:3.85, y:7.28, w:0.62, h:0.60, z0:1.75, z1:2.15, label:"cabinet above dryer" },
-        { k:"trim",   x:4.46, y:7.28, w:0.02, h:0.115,z0:0,    z1:2.15, label:"walnut side panel (laundry bay)" },
+        { k:"upper",  x:3.85, y:7.28, w:0.62, h:0.60, z0:1.75, z1:"ceiling", label:"cabinet above dryer" },
+        { k:"trim",   x:4.46, y:7.28, w:0.02, h:0.115,z0:0,    z1:"ceiling", label:"walnut side panel (laundry bay)" },
         // Service column fills x 4.47–4.87 (40 cm) back to the corridor wall, front flush at 7.395
-        { k:"box",    x:4.47, y:7.395,w:0.40, h:0.485,z0:0, z1:2.15, label:"service", role:"service" },
+        { k:"box",    x:4.47, y:7.395,w:0.40, h:0.485,z0:0, z1:"ceiling", label:"service", role:"service" },
         // Vanity, towel rail between vanity and bath
         { k:"basin",  x:3.87, y:5.59, w:0.90, h:0.48, label:"vanity 0.90" },
         { k:"mirror", x:3.87, y:5.59, w:0.90, h:0.14, z0:1.10, z1:1.85, label:"mirror cabinet" },
