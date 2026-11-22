@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flat 60 Measurements</title>
+<style>
+  :root { --bg:#fafaf7; --ink:#1d1d1b; --muted:#8a8a84; --wall:#1d1d1b; --acc:#d0542c; --ok:#2f8a57; --line:#e4e2db; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui, sans-serif; }
+  header { padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:2; }
+  h1 { font-size:16px; margin:0; }
+  .muted { color:var(--muted); }
+  main { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:16px; padding:12px 16px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } #planwrap { position:static !important; } }
+  #planwrap { position:sticky; top:64px; align-self:start; }
+  svg { width:100%; height:auto; display:block; }
+  .tag { cursor:pointer; }
+  .tag circle { fill:#fff; stroke:var(--acc); stroke-width:0.02; }
+  .tag text { font-size:0.13px; font-weight:700; fill:var(--acc); text-anchor:middle; dominant-baseline:central; }
+  .tag.done circle { fill:var(--ok); stroke:var(--ok); } .tag.done text { fill:#fff; }
+  .tag.sel circle { fill:var(--acc); } .tag.sel text { fill:#fff; }
+  .dim { stroke:var(--acc); stroke-width:0.012; opacity:.55; }
+  .dim.sel { stroke-width:0.03; opacity:1; }
+  .dim.done { stroke:var(--ok); }
+  h2 { font-size:14px; margin:18px 0 6px; }
+  table { width:100%; border-collapse:collapse; }
+  td { padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  td.code { font-weight:700; color:var(--acc); width:36px; }
+  tr.done td.code { color:var(--ok); }
+  tr.sel { background:#fbeee8; }
+  td.plan { color:var(--muted); width:70px; text-align:right; white-space:nowrap; }
+  input.cm { width:70px; font:inherit; padding:3px 5px; }
+  input.note { width:100%; min-width:80px; font:inherit; padding:3px 5px; box-sizing:border-box; }
+  textarea { width:100%; box-sizing:border-box; font:12px monospace; }
+  button { font:inherit; padding:4px 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Flat 60 — measurement sheet</h1>
+  <span class="muted">Type each value in <b>cm</b>. Click a code on the plan to jump to its field. Wall-to-wall = finished surface to finished surface.</span>
+  <span id="progress" class="muted"></span>
+  <button id="copy">Copy for Claude</button>
+</header>
+<main>
+  <div id="planwrap"><svg id="plan" xmlns="http://www.w3.org/2000/svg"></svg>
+    <p class="muted">Orange = still to measure · green = filled in. "Plan" column = what the cadastral drawing says.</p>
+  </div>
+  <div>
+    <div id="forms"></div>
+    <h2>Anything else (bulkheads, pipes, sockets, crooked walls…)</h2>
+    <textarea id="extra" rows="3" placeholder="Free notes"></textarea>
+    <h2>Result to paste</h2>
+    <textarea id="out" rows="6" readonly></textarea>
+  </div>
+</main>
+
+<script src="plan-data.js?v=2026-11-22d"></script>
+<script>
+/* Each item: code, group, description, plan value (m), dimension endpoints a→b (plan metres),
+   off = perpendicular offset of the drawn dimension line (m), or pt = tag position for point/height items. */
+const ITEMS = [
+  // ---- Living room / kitchen (60-1)
+  {c:"L1", g:"Living room / kitchen", d:"North wall: west wall → partition (bedroom side)", v:3.73, a:[0,0], b:[3.73,0], off:0.95},
+  {c:"L2", g:"Living room / kitchen", d:"West wall: north wall → kitchen wall", v:6.00, a:[0,0], b:[0,6.00], off:0.30},
+  {c:"L3", g:"Living room / kitchen", d:"Partition (east side): north wall → corridor wall", v:7.87, a:[3.73,0], b:[3.73,7.87], off:-0.30},
+  {c:"L4", g:"Living room / kitchen", d:"Kitchen wall (with drain + water): west wall → wall stub", v:2.10, a:[0,6.00], b:[2.10,6.00], off:-0.25},
+  {c:"L5", g:"Living room / kitchen", d:"Wall stub: how far it sticks up into the living room", v:0.67, a:[2.10,5.33], b:[2.10,6.00], off:-0.18},
+  {c:"L6", g:"Living room / kitchen", d:"Passage living → hall: wall stub → partition", v:1.50, a:[2.23,6.00], b:[3.73,6.00], off:-0.25},
+  {c:"L7", g:"Living room / kitchen", d:"Diagonal check (optional): NW corner → kitchen-wall/stub corner", v:7.07, a:[0,0], b:[2.10,6.00], off:0},
+  // ---- Hall
+  {c:"H1", g:"Hall", d:"Width under kitchen wall: narrow-shaft wall → wall stub", v:1.93, a:[0.28,6.13], b:[2.23,6.13], off:0.20},
+  {c:"H2", g:"Hall", d:"Width along corridor wall: big shaft box → partition", v:2.63, a:[1.10,7.87], b:[3.73,7.87], off:-0.20},
+  {c:"H3", g:"Hall", d:"West side length beside the narrow shaft", v:0.97, a:[0.28,6.13], b:[0.28,7.08], off:0.18},
+  {c:"H4", g:"Hall", d:"Step to the big shaft box (front face width)", v:0.80, a:[0.28,7.08], b:[1.10,7.08], off:0.18},
+  {c:"H5", g:"Hall", d:"Big shaft box: side depth (to corridor wall)", v:0.79, a:[1.10,7.08], b:[1.10,7.87], off:0.18},
+  {c:"H6", g:"Hall", d:"Hall depth: kitchen wall → corridor wall", v:1.74, a:[2.40,6.13], b:[2.40,7.87], off:0},
+  // ---- Windows & doors
+  {c:"O1", g:"Windows & doors", d:"Living: west wall → start of balcony glazing", v:0.91, a:[0,0], b:[0.91,0], off:0.35},
+  {c:"O2", g:"Windows & doors", d:"Balcony door + window: total glazing width", v:2.19, a:[0.91,0], b:[3.10,0], off:0.35},
+  {c:"O3", g:"Windows & doors", d:"Balcony DOOR (right part) width incl. frame — known: right, opens inward", v:1.05, pt:[2.67,0.62], note:true},
+  {c:"O4", g:"Windows & doors", d:"End of balcony glazing → partition", v:0.63, a:[3.10,0], b:[3.73,0], off:0.35},
+  {c:"O5", g:"Windows & doors", d:"Entrance: partition → door opening edge", v:0.35, a:[3.38,7.87], b:[3.73,7.87], off:-0.45},
+  {c:"O6", g:"Windows & doors", d:"Entrance door opening width — note hinge side (left/right from inside)", v:1.04, a:[2.34,7.87], b:[3.38,7.87], off:-0.45, note:true},
+  {c:"O7", g:"Windows & doors", d:"Living side: north wall → bedroom doorway", v:2.98, a:[3.73,0], b:[3.73,2.98], off:-0.65},
+  {c:"O8", g:"Windows & doors", d:"Bedroom doorway width", v:0.90, a:[3.73,2.98], b:[3.73,3.88], off:-0.65},
+  {c:"O9", g:"Windows & doors", d:"Bathroom: bedroom wall → bathroom doorway", v:0.57, a:[3.86,5.59], b:[3.86,6.16], off:0.22},
+  {c:"O10",g:"Windows & doors", d:"Bathroom doorway width", v:0.89, a:[3.86,6.16], b:[3.86,7.05], off:0.22},
+  // ---- Bedroom (60-2)
+  {c:"R1", g:"Bedroom", d:"Width: partition → east wall", v:2.64, a:[3.86,0], b:[6.50,0], off:0.95},
+  {c:"R2", g:"Bedroom", d:"Length: north wall → bathroom wall", v:5.46, a:[6.50,0], b:[6.50,5.45], off:-0.65},
+  {c:"R3", g:"Bedroom", d:"Partition → start of north window", v:0.86, a:[3.86,0], b:[4.72,0], off:0.35},
+  {c:"R4", g:"Bedroom", d:"North window width", v:1.19, a:[4.72,0], b:[5.91,0], off:0.35},
+  {c:"R5", g:"Bedroom", d:"North wall → start of east window", v:1.00, a:[6.50,0], b:[6.50,1.00], off:-0.25},
+  {c:"R6", g:"Bedroom", d:"East window width", v:1.20, a:[6.50,1.00], b:[6.50,2.20], off:-0.25},
+  // ---- Bathroom (60-3)
+  {c:"B1", g:"Bathroom", d:"Width at the bedroom wall: west wall → east wall", v:2.64, a:[3.86,5.59], b:[6.50,5.59], off:0.85},
+  {c:"B2", g:"Bathroom", d:"BATH LENGTH: bedroom wall → shaft face (east side) — key for 180 vs 175 bath", v:1.80, a:[6.50,5.59], b:[6.50,7.39], off:-0.20},
+  {c:"B3", g:"Bathroom", d:"Door side: bedroom wall → corridor wall", v:2.28, a:[3.86,5.59], b:[3.86,7.87], off:0.55},
+  {c:"B4", g:"Bathroom", d:"Strip by the door: west wall → shaft side", v:1.03, a:[3.86,7.87], b:[4.90,7.87], off:-0.18},
+  {c:"B5", g:"Bathroom", d:"Shaft recess width (WC spot)", v:0.54, a:[4.90,7.53], b:[5.44,7.53], off:-0.30},
+  {c:"B6", g:"Bathroom", d:"Shaft recess depth (how far it goes back)", v:0.14, a:[5.44,7.39], b:[5.44,7.53], off:0.12},
+  {c:"B7", g:"Bathroom", d:"Shaft front face width (bath end)", v:1.06, a:[5.44,7.39], b:[6.50,7.39], off:-0.20},
+  {c:"B8", g:"Bathroom", d:"WC drain centre: distance from west wall AND from shaft face (write both)", v:null, pt:[5.13,7.20], note:true},
+  // ---- Pipes & electrical (seen in site photos 2026-11-22) — write "distance from corner / height", e.g. "70 / 172"
+  {c:"K1", g:"Pipes & electrical (from photos)", d:"Kitchen pipes (hot/cold/drain at floor): centre distance from the WEST concrete wall", v:1.25, pt:[1.25,5.80]},
+  {c:"E1", g:"Pipes & electrical (from photos)", d:"West wall, kitchen corner, 1st cable drop — UPPER box: distance from kitchen wall / height (note: a / b)", v:null, pt:[0.22,5.10], note:true},
+  {c:"E2", g:"Pipes & electrical (from photos)", d:"Same drop — LOWER box: height", v:null, pt:[0.22,5.45]},
+  {c:"E3", g:"Pipes & electrical (from photos)", d:"2nd cable drop (low box): distance from kitchen wall / height (note: a / b)", v:null, pt:[0.22,4.75], note:true},
+  {c:"E4", g:"Pipes & electrical (from photos)", d:"Low box further along the west wall (living room): distance from kitchen wall / height", v:null, pt:[0.22,3.00], note:true},
+  {c:"E5", g:"Pipes & electrical (from photos)", d:"Red boxes high near the balcony corner: distance from balcony wall / height", v:null, pt:[0.22,0.70], note:true},
+  {c:"E7", g:"Pipes & electrical (from photos)", d:"Bedroom east wall, group of 3 boxes: distance from bathroom wall / height", v:null, pt:[6.25,3.30], note:true},
+  {c:"E8", g:"Pipes & electrical (from photos)", d:"White filled patch on partition (hall side) ~1 m high: is it a box? distance from bathroom doorway", v:null, pt:[3.50,5.30], note:true},
+  {c:"W1", g:"Pipes & electrical (from photos)", d:"Balcony fixed glass: height of the cross bar (from floor)", v:1.05, pt:[1.45,0.15]},
+  // ---- Heights
+  {c:"Z1", g:"Heights", d:"Ceiling height — living room", v:null, pt:[1.6,2.2]},
+  {c:"Z2", g:"Heights", d:"Ceiling height — bedroom", v:null, pt:[5.18,1.9]},
+  {c:"Z3", g:"Heights", d:"Ceiling height — bathroom", v:null, pt:[4.4,6.6]},
+  {c:"Z4", g:"Heights", d:"Ceiling height — hall", v:null, pt:[1.7,7.0]},
+  {c:"Z5", g:"Heights", d:"Balcony door: top of opening (from floor)", v:null, pt:[1.5,0.62]},
+  {c:"Z6", g:"Heights", d:"Balcony window part: sill height (from floor)", v:null, pt:[1.15,0.95]},
+  {c:"Z7", g:"Heights", d:"Bedroom north window: sill height", v:null, pt:[5.0,0.62]},
+  {c:"Z8", g:"Heights", d:"Bedroom north window: top of opening", v:null, pt:[5.5,0.62]},
+  {c:"Z9", g:"Heights", d:"Bedroom east window: sill height", v:null, pt:[6.05,1.3]},
+  {c:"Z10",g:"Heights", d:"Bedroom east window: top of opening", v:null, pt:[6.05,1.85]},
+  {c:"Z11",g:"Heights", d:"Entrance door: height of opening", v:null, pt:[2.86,7.45]},
+  {c:"Z12",g:"Heights", d:"Interior doorways (bedroom / bathroom): height", v:null, pt:[3.30,3.43]},
+];
+
+/* ---------- state ---------- */
+const KEY = "flat60-measure";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} };
+
+/* ---------- plan drawing ---------- */
+const NS = "http://www.w3.org/2000/svg", svg = document.getElementById("plan"), P = window.PLAN;
+svg.setAttribute("viewBox", "-0.9 -1.0 8.3 9.4");
+const el = (t, a, p = svg) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+el("rect", {x:0, y:0, width:6.5, height:7.87, fill:"#fff"});
+P.shafts.forEach(s => el("polygon", {points:s.map(p => p.join(",")).join(" "), fill:"#d3d0c6", stroke:"#1d1d1b", "stroke-width":0.04}));
+P.walls.forEach(([x,y,w,h]) => el("rect", {x, y, width:w, height:h, fill:"#1d1d1b"}));
+P.windows.forEach(([x1,y1,x2,y2]) => el("line", {x1, y1, x2, y2, stroke:"#3a7bd5", "stroke-width":0.12}));
+P.openings.forEach(([x1,y1,x2,y2]) => el("line", {x1, y1, x2, y2, stroke:"#bbb", "stroke-width":0.05, "stroke-dasharray":"0.06 0.04"}));
+[["Living / kitchen",1.6,1.6],["Bedroom",5.18,1.45],["Bath",4.45,6.35],["Hall",1.6,6.75]].forEach(([t,x,y]) =>
+  el("text", {x, y, "text-anchor":"middle", style:"font-size:0.2px;fill:#c9c6bd;font-weight:600"}).textContent = t);
+
+(P.electrical||[]).forEach(e => el("circle", {cx:e.x + (e.wall==="W"?0.06:e.wall==="C"?0:-0.06), cy:e.y, r:0.045, fill:"#7a3fb0"}));
+const dimEls = {}, tagEls = {};
+ITEMS.forEach(it => {
+  let tx, ty;
+  if (it.a) {
+    const [ax, ay] = it.a, [bx, by] = it.b, L = Math.hypot(bx-ax, by-ay) || 1;
+    const nx = -(by-ay)/L, ny = (bx-ax)/L, o = it.off || 0;          // perpendicular offset
+    const x1 = ax+nx*o, y1 = ay+ny*o, x2 = bx+nx*o, y2 = by+ny*o;
+    const g = el("g", {class:"dim"});
+    el("line", {x1, y1, x2, y2}, g);
+    // end ticks
+    [[x1,y1],[x2,y2]].forEach(([x,y]) => el("line", {x1:x-nx*0.06-(bx-ax)/L*0.04, y1:y-ny*0.06-(by-ay)/L*0.04, x2:x+nx*0.06+(bx-ax)/L*0.04, y2:y+ny*0.06+(by-ay)/L*0.04}, g));
+    dimEls[it.c] = g; tx = (x1+x2)/2; ty = (y1+y2)/2;
+  } else [tx, ty] = it.pt;
+  const t = el("g", {class:"tag"});
+  el("circle", {cx:tx, cy:ty, r:0.12}, t);
+  el("text", {x:tx, y:ty+0.005}, t).textContent = it.c;
+  t.addEventListener("click", () => select(it.c, true));
+  tagEls[it.c] = t;
+});
+
+/* ---------- forms ---------- */
+const forms = document.getElementById("forms");
+const rows = {};
+[...new Set(ITEMS.map(i => i.g))].forEach(group => {
+  const h = document.createElement("h2"); h.textContent = group; forms.appendChild(h);
+  const tb = document.createElement("table"); forms.appendChild(tb);
+  ITEMS.filter(i => i.g === group).forEach(it => {
+    const tr = tb.insertRow(); rows[it.c] = tr;
+    tr.insertCell().outerHTML = `<td class="code">${it.c}</td>`;
+    tr.insertCell().textContent = it.d;
+    const plan = tr.insertCell(); plan.className = "plan"; plan.textContent = it.v == null ? "—" : `plan ${Math.round(it.v*100)}`;
+    const c1 = tr.insertCell(), inp = document.createElement("input");
+    inp.className = "cm"; inp.type = "number"; inp.step = "0.5"; inp.placeholder = "cm";
+    inp.value = state[it.c]?.cm ?? ""; c1.appendChild(inp);
+    const c2 = tr.insertCell(), note = document.createElement("input");
+    note.className = "note"; note.placeholder = it.note ? "required note…" : "note (optional)";
+    note.value = state[it.c]?.note ?? ""; c2.appendChild(note);
+    const upd = () => { state[it.c] = {cm: inp.value, note: note.value}; if (!inp.value && !note.value) delete state[it.c]; save(); refresh(); };
+    inp.addEventListener("input", upd); note.addEventListener("input", upd);
+    inp.addEventListener("focus", () => select(it.c, false)); note.addEventListener("focus", () => select(it.c, false));
+  });
+});
+document.getElementById("extra").value = state._extra || "";
+document.getElementById("extra").addEventListener("input", e => { state._extra = e.target.value; save(); refresh(); });
+
+let current = null;
+function select(code, scroll) {
+  if (current) { rows[current]?.classList.remove("sel"); tagEls[current]?.classList.remove("sel"); dimEls[current]?.classList.remove("sel"); }
+  current = code;
+  rows[code].classList.add("sel"); tagEls[code].classList.add("sel"); dimEls[code]?.classList.add("sel");
+  if (scroll) { rows[code].scrollIntoView({block:"center", behavior:"smooth"}); rows[code].querySelector("input").focus({preventScroll:true}); }
+}
+function refresh() {
+  let done = 0;
+  ITEMS.forEach(it => {
+    const has = !!(state[it.c] && (state[it.c].cm || state[it.c].note));
+    if (has) done++;
+    rows[it.c].classList.toggle("done", has); tagEls[it.c].classList.toggle("done", has); dimEls[it.c]?.classList.toggle("done", has);
+  });
+  document.getElementById("progress").textContent = `${done} / ${ITEMS.length} filled`;
+  const out = {};
+  ITEMS.forEach(it => { const s = state[it.c]; if (s && (s.cm || s.note)) out[it.c] = s.note ? `${s.cm || "?"} cm — ${s.note}` : `${s.cm} cm`; });
+  if (state._extra) out.notes = state._extra;
+  document.getElementById("out").value = Object.keys(out).length ? "measurements: " + JSON.stringify(out, null, 1) : "";
+}
+refresh();
+
+document.getElementById("copy").onclick = () => {
+  const out = document.getElementById("out"), btn = document.getElementById("copy");
+  out.select(); let ok = false; try { ok = document.execCommand("copy"); } catch(e) {}
+  const done = () => { btn.textContent = "Copied ✓"; setTimeout(() => btn.textContent = "Copy for Claude", 1500); };
+  if (ok) return done();
+  try { navigator.clipboard.writeText(out.value).then(done, () => btn.textContent = "Select the result box & Ctrl+C"); }
+  catch(e) { btn.textContent = "Select the result box & Ctrl+C"; }
+};
+</script>
+</body>
+</html>

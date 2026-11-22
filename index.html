@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flat Plan</title>
+<style>
+  :root { --bg:#f6f4ef; --card:#ffffff; --ink:#1d1d1b; --muted:#6f6e68; --acc:#1f5c40; --line:#e3e0d8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161614; --card:#20201d; --ink:#ecebe6; --muted:#a3a29b; --acc:#6fbf95; --line:#34332f; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:40px 16px 56px; }
+  h1 { font-size:28px; margin:0 0 6px; letter-spacing:-0.01em; }
+  p.lead { color:var(--muted); margin:0 0 28px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; }
+  a.card { display:block; text-decoration:none; color:inherit; background:var(--card); border:1px solid var(--line);
+           border-radius:12px; padding:18px; transition:border-color .15s, transform .15s; }
+  a.card:hover { border-color:var(--acc); transform:translateY(-1px); }
+  a.card b { display:block; font-size:17px; margin-bottom:4px; color:var(--acc); }
+  a.card span { color:var(--muted); font-size:14px; }
+  a.card.main { grid-column:1 / -1; }
+  h2 { font-size:17px; margin:32px 0 8px; }
+  ul { margin:0; padding-left:20px; color:var(--muted); }
+  li { margin:4px 0; }
+  footer { margin-top:36px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Our flat — design ideas</h1>
+  <p class="lead">A 2-room flat (≈48 m²): living room with kitchen, bedroom, bathroom and balcony.
+     Work in progress — I'd love to hear what you think!</p>
+
+  <div class="grid">
+    <a class="card main" href="plan3d.html">
+      <b>3D view →</b>
+      <span>Walk around the flat. Start with “From the doorway” to stand in the bathroom door.</span>
+    </a>
+    <a class="card" href="plan.html">
+      <b>Floor plan (2D)</b>
+      <span>Exact layout with sizes in metres. Switch bathroom options in the dropdown.</span>
+    </a>
+    <a class="card" href="measure.html">
+      <b>Measurement sheet</b>
+      <span>Site measurements behind the plans (mostly for me).</span>
+    </a>
+  </div>
+
+  <h2>How to use the 3D view</h2>
+  <ul>
+    <li>Drag to rotate, right-drag (or two fingers) to move, scroll to zoom.</li>
+    <li><b>Double-click</b> any spot to rotate around it, or use “Center on” to jump to a room.</li>
+    <li>Hover over things to see what they are.</li>
+    <li>“Finish” switches between the green-tile style and a plain view.</li>
+  </ul>
+
+  <h2>What I'd like your opinion on</h2>
+  <ul>
+    <li>The bathroom: bath along the wall, washer + dryer stacked in the corner, the green tiles + walnut look.</li>
+    <li>Anything that feels cramped, odd, or that you'd do differently.</li>
+  </ul>
+
+  <footer>Sizes are measured on site; heights and socket positions are partly estimates.</footer>
+</main>
+</body>
+</html>
