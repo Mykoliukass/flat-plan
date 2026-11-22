@@ -7,8 +7,16 @@ const COMMENTS_CONFIG = {
   key: "sb_publishable_usIBmxpvX3zhvj7GoEazKA_jordw-jd",   // public publishable key (read + add only)
 };
 
+// How a handled comment was decided (used by the panel and by comments.html)
+const STATUS = {
+  done:     { label: "✓ Done",     color: "#2f8a57" },
+  declined: { label: "✗ Declined", color: "#8a5a5a" },
+  later:    { label: "⏸ Later",    color: "#b07d1e" },
+};
+
 (function () {
-  const PAGE = window.COMMENTS_PAGE;                 // "2d" or "3d", set by the page
+  const PAGE = window.COMMENTS_PAGE;                 // "2d" or "3d", set by the page; "history" = config only
+  if (PAGE === "history") return;
   const ready = !!(COMMENTS_CONFIG.url && COMMENTS_CONFIG.key);
   const isNewKey = COMMENTS_CONFIG.key.startsWith("sb_");
   const headers = () => Object.assign({ apikey: COMMENTS_CONFIG.key, "Content-Type": "application/json" },
@@ -93,7 +101,7 @@ const COMMENTS_CONFIG = {
     // handled comments are listed in comments-status.json (kept with the site, updated by Claude)
     let status = {};
     try { const r = await fetch("comments-status.json?t=" + Date.now()); if (r.ok) status = await r.json(); } catch (e) {}
-    const isDone = c => status[c.id] && status[c.id].status === "done";
+    const isDone = c => !!(status[c.id] && STATUS[status[c.id].status]);       // handled: done / declined / later
     const open = comments.filter(c => !isDone(c)), done = comments.filter(isDone);
     let n = 0;
     list.innerHTML = open.length ? "" : `<p style="color:#8a8a84">${done.length ? "All comments handled — add a new one!" : "No comments yet — be the first!"}</p>`;
@@ -110,17 +118,25 @@ const COMMENTS_CONFIG = {
     done.forEach(c => { c._pin = null; });                           // no pins for handled comments
     if (done.length) {
       const det = document.createElement("details"); det.style.marginTop = "8px";
-      det.innerHTML = `<summary style="cursor:pointer;color:#2f8a57;font-weight:600">✓ Done (${done.length})</summary>`;
+      det.innerHTML = `<summary style="cursor:pointer;color:#2f8a57;font-weight:600">Handled (${done.length})</summary>`;
       done.forEach(c => {
-        const d = document.createElement("div"); d.className = "cmt"; d.style.opacity = "0.75";
-        d.innerHTML = `<div class="meta"><b></b> · ${when(c)}</div><div class="text" style="text-decoration:line-through"></div><div class="meta reply" style="color:#2f8a57"></div>`;
+        const st = status[c.id], S_ = STATUS[st.status];
+        const d = document.createElement("div"); d.className = "cmt"; d.style.opacity = "0.8";
+        d.innerHTML = `<div class="meta"><span class="badge" style="color:#fff;border-radius:8px;padding:0 6px;font-size:11px;font-weight:700"></span> <b></b> · ${when(c)}</div>
+                       <div class="text" style="text-decoration:${st.status === "done" ? "line-through" : "none"}"></div>
+                       <div class="meta decision" style="font-weight:600"></div><div class="meta reply"></div>`;
+        const badge = d.querySelector(".badge"); badge.textContent = S_.label; badge.style.background = S_.color;
         d.querySelector("b").textContent = c.name || "Anonymous";
         d.querySelector(".text").textContent = c.body;
-        d.querySelector(".reply").textContent = "✓ " + (status[c.id].note || "done");
+        d.querySelector(".decision").textContent = st.decision ? "Decision: " + st.decision : "";
+        d.querySelector(".decision").style.color = S_.color;
+        d.querySelector(".reply").textContent = st.note || "";
         det.appendChild(d);
       });
       list.appendChild(det);
     }
+    const all = document.createElement("a"); all.href = "comments.html"; all.textContent = "See full comment history →";
+    all.style.cssText = "display:block;margin:8px 0 2px;font-size:12px;color:#1f5c40"; list.appendChild(all);
     list.scrollTop = list.scrollHeight;
     refreshPins();
   }

@@ -25,7 +25,7 @@ with urllib.request.urlopen(req, timeout=20) as r:
 
 status_file = Path(__file__).parent / "comments-status.json"
 status = json.loads(status_file.read_text(encoding="utf-8")) if status_file.exists() else {}
-done = {int(k) for k, v in status.items() if v.get("status") == "done"}
+done = {int(k) for k, v in status.items() if v.get("status") in ("done", "declined", "later")}
 total = len(rows)
 if "--all" not in sys.argv:
     rows = [c for c in rows if c["id"] not in done]
@@ -33,9 +33,10 @@ if "--all" not in sys.argv:
 if "--json" in sys.argv:
     print(json.dumps(rows, ensure_ascii=False, indent=1))
 else:
-    print(f"{len(rows)} comment(s) shown  ({total} total, {len(done)} marked done)\n")
+    print(f"{len(rows)} comment(s) shown  ({total} total, {len(done)} handled)\n")
     for c in rows:
         where = f" @ ({c['x']:.2f}, {c['y']:.2f}{', h ' + format(c['z'], '.2f') if c.get('z') is not None else ''})" if c.get("x") is not None else ""
-        mark = "  ✓ DONE: " + status[str(c["id"])].get("note", "") if c["id"] in done else ""
+        st = status.get(str(c["id"]), {})
+        mark = f"  [{st['status'].upper()}] {st.get('decision', '')}" if c["id"] in done else ""
         print(f"#{c['id']} {c['created_at'][:16]} [{c['page']}] {c.get('name') or 'Anonymous'}{where}"
               f"{'  · layout: ' + c['layout'] if c.get('layout') else ''}{mark}\n  {c['body']}\n")

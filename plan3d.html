@@ -184,15 +184,71 @@ const TEX = {
       const c = (200 + rnd() * 45) | 0; g.fillStyle = "rgba(" + c + "," + (c - 4) + "," + (c - 10) + ",0.35)";
       g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2);
     } }) },
-  // dark walnut panelling, vertical grain → covers 0.5 × 1.0 m
-  walnut: { u:0.5, v:1.0, t: canvasTex(256, 512, (g, w, h) => {
-    g.fillStyle = PAL.walnut; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 160; i++) {
-      const x = rnd() * w, a = 0.05 + rnd() * 0.12;
-      g.strokeStyle = rnd() > 0.5 ? `rgba(120,78,48,${a})` : `rgba(15,8,4,${a})`;
-      g.lineWidth = 0.5 + rnd() * 2.5; g.beginPath(); g.moveTo(x, 0);
-      g.bezierCurveTo(x + rnd() * 8 - 4, h * 0.33, x + rnd() * 8 - 4, h * 0.66, x + rnd() * 6 - 3, h); g.stroke();
-    } }) },
+  // walnut veneer (based on owner's photo, turned vertical): wavy grain, irregular spacing, cathedral arches,
+  // darker streaks and pores. Periodic in both directions so it tiles without seams. Covers 0.6 x 1.2 m.
+  walnut: { u:0.6, v:1.2, t: canvasTex(512, 1024, (g, w, h) => {
+    const TAU = Math.PI * 2;
+    // smooth periodic wobble along the board: sum of sines with whole cycles per texture height
+    const wob = (y, ph, amp) => amp * (0.55 * Math.sin(TAU * y / h + ph[0]) + 0.3 * Math.sin(TAU * 2 * y / h + ph[1])
+                                    + 0.15 * Math.sin(TAU * 5 * y / h + ph[2]));
+    // base colour with soft lighter / darker bands across the width
+    g.fillStyle = "#4b3020"; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 14; i++) {
+      const x = rnd() * w, bw = 20 + rnd() * 70, light = rnd() > 0.5;
+      const gr = g.createLinearGradient(x - bw, 0, x + bw, 0);
+      const c = light ? "rgba(122,84,52," : "rgba(30,17,9,";
+      gr.addColorStop(0, c + "0)"); gr.addColorStop(0.5, c + (0.10 + rnd() * 0.15) + ")"); gr.addColorStop(1, c + "0)");
+      g.fillStyle = gr; g.fillRect(x - bw, 0, bw * 2, h);
+    }
+    const line = (x0, ph, amp, width, col) => {          // one wavy grain line, drawn twice for horizontal wrap
+      for (const dx of [-w, 0, w]) {
+        g.beginPath();
+        for (let y = 0; y <= h; y += 4) { const x = x0 + dx + wob(y, ph, amp); y ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.strokeStyle = col; g.lineWidth = width; g.stroke();
+      }
+    };
+    // grain lines: clustered, irregular gaps, varying darkness and width
+    let x = 0;
+    while (x < w) {
+      x += rnd() < 0.25 ? 14 + rnd() * 26 : 2 + rnd() * 7;    // mostly tight, sometimes a wide calm gap
+      const ph = [rnd() * TAU, rnd() * TAU, rnd() * TAU], amp = 3 + rnd() * 14;
+      const dark = rnd() < 0.8, a2 = dark ? 0.12 + rnd() * 0.38 : 0.06 + rnd() * 0.12;
+      line(x, ph, amp, 0.6 + rnd() * (dark ? 2.4 : 3.5), dark ? `rgba(22,12,6,${a2})` : `rgba(150,104,66,${a2})`);
+    }
+    // cathedral arches: nested flame shapes pointing up
+    for (let k = 0; k < 3; k++) {
+      const cx = rnd() * w, top = rnd() * h, ph = [rnd() * TAU, rnd() * TAU, rnd() * TAU];
+      for (let r = 1; r <= 7; r++) {
+        g.beginPath();
+        for (let t = -1; t <= 1.0001; t += 0.04) {
+          const yy = top + Math.pow(Math.abs(t), 0.55) * (90 + r * 38), xx = cx + t * (10 + r * 11) + wob(yy, ph, 4);
+          t === -1 ? g.moveTo(xx, yy) : g.lineTo(xx, yy);
+        }
+        g.strokeStyle = `rgba(24,13,7,${0.18 + rnd() * 0.25})`; g.lineWidth = 0.8 + rnd() * 1.8; g.stroke();
+      }
+    }
+    // pores: tiny vertical dashes
+    for (let i = 0; i < 9000; i++) {
+      const px = rnd() * w, py = rnd() * h;
+      g.fillStyle = rnd() > 0.3 ? `rgba(18,10,5,${0.10 + rnd() * 0.2})` : `rgba(140,96,60,${0.08 + rnd() * 0.1})`;
+      g.fillRect(px, py, 0.8, 2 + rnd() * 6);
+    }
+  }) },
+  // large-format warm beige stone tiles 120 x 60 (owner's sample) -> covers 1.2 x 0.6 m
+  bigtile: { u:1.2, v:0.6, t: canvasTex(512, 256, (g, w, h) => {
+    g.fillStyle = "#9a886b"; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 160; i++) {                       // cloudy mottling
+      const x = rnd() * w, y = rnd() * h, r = 14 + rnd() * 60, light = rnd() > 0.45;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, light ? `rgba(176,160,130,${0.04 + rnd() * 0.07})` : `rgba(118,101,76,${0.04 + rnd() * 0.07})`);
+      gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < 1800; i++) {                      // fine stone specks
+      g.fillStyle = rnd() > 0.5 ? `rgba(92,77,55,${0.10 + rnd() * 0.18})` : `rgba(190,176,150,${0.08 + rnd() * 0.14})`;
+      const sz = 0.6 + rnd() * 1.8; g.fillRect(rnd() * w, rnd() * h, sz, sz);
+    }
+    g.strokeStyle = "#bfb39d"; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);   // thin grout joint
+  }) },
   // white marble with grey veins → covers 1.0 × 0.5 m
   marble: { u:1.0, v:0.5, t: canvasTex(512, 256, (g, w, h) => {
     g.fillStyle = PAL.marble; g.fillRect(0, 0, w, h);
@@ -218,7 +274,8 @@ const TEX = {
 // physical properties per finish
 const MATP = {
   tile:   { physical:true, roughness:0.18, clearcoat:1, clearcoatRoughness:0.04, normal:"tileN", normalScale:0.9 },
-  walnut: { roughness:0.55 },  marble: { roughness:0.25 },  floor: { roughness:0.45 },
+  walnut: { roughness:0.5 },   marble: { roughness:0.25 },  floor: { roughness:0.45 },
+  bigtile:{ roughness:0.55 },
   rug:    { roughness:1 },     stone:  { roughness:0.92 },   stoneLight: { roughness:0.4 },
 };
 // material with the texture scaled to a real-world face size (w x h metres)
@@ -243,24 +300,28 @@ function panel(x1, y1, x2, y2, z0, z1, key, label) {
   p.position.set((x1 + x2) / 2, (z0 + z1) / 2, (y1 + y2) / 2); world.add(p);
   if (label) { p.userData.label = label; pickables.push(p); }
 }
-// tiled wall section from z0 to z1 (green gloss tiles)
-function tileWall(x1, y1, x2, y2, z0, z1) {
-  panel(x1, y1, x2, y2, z0, z1, "tile", "green gloss tiles 7.5×30");
-}
-// Bathroom finishes (owner, 2026-11-22): green tiles on ALL walls, floor to ceiling.
-// Walnut only on furniture: vanity, cabinets, service column, laundry-bay framing, recessed cabinet above the WC.
+// wall finish helpers
+const tileWall   = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "tile",    "green gloss tiles 7.5×30");
+const bigWall    = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "bigtile", "large beige stone tiles 120×60");
+const walnutWall = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "walnut",  "walnut wall panelling");
+// Bathroom finishes (owner, 2026-11-22, round 2):
+//  - green small tiles only as a band up to 2 rows above the bath rim (≈1.20 m): on the outer wall behind the bath,
+//    the bath-end wall, and the strip between the walnut toilet wall and the bath (bath front stays green too)
+//  - walnut on the toilet wall, floor to ceiling
+//  - large beige stone tiles everywhere else (above the green band and on all other walls)
 function bathroomFinishes(WH) {
-  const o = 0.004;
-  tileWall(3.85, 5.59 + o, 6.49, 5.59 + o, 0, WH);          // north wall (bedroom side), incl. bath alcove
-  tileWall(6.49 - o, 5.59, 6.49 - o, 7.395, 0, WH);         // east (outer) wall in the bath alcove
-  tileWall(5.42, 7.395 - o, 6.49, 7.395 - o, 0, WH);        // back wall: bath end + shaft face beside WC
-  // WC recess: tiles on the frame front up to 1.20, recessed walnut cabinet from 1.20 to the ceiling
-  tileWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);   // above 1.20 the walnut cabinet runs to the ceiling
-  tileWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);          // corridor wall behind the laundry bay
-  tileWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);          // west wall, either side of the doorway
-  tileWall(3.85 + o, 7.08, 3.85 + o, 7.88, 0, WH);
+  const o = 0.004, BAND = 1.20;
+  bigWall(3.85, 5.59 + o, 6.49, 5.59 + o, 0, WH);                 // bedroom wall (vanity, towel rail, bath head end)
+  tileWall(6.49 - o, 5.59, 6.49 - o, 7.395, 0, BAND);             // outer wall behind the bath ("middle")
+  bigWall(6.49 - o, 5.59, 6.49 - o, 7.395, BAND, WH);
+  tileWall(5.42, 7.395 - o, 6.49, 7.395 - o, 0, BAND);            // bath end ("right") + strip between walnut and bath
+  bigWall(5.42, 7.395 - o, 6.49, 7.395 - o, BAND, WH);
+  walnutWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, WH);            // toilet wall: walnut floor to ceiling
+  bigWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);                 // corridor wall behind the laundry bay
+  bigWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);                 // west wall, either side of the doorway
+  bigWall(3.85 + o, 7.08, 3.85 + o, 7.88, 0, WH);
   const DH = (P.heights||{}).doorway || 2.05;
-  if (WH > DH) tileWall(3.85 + o, 6.18, 3.85 + o, 7.08, DH, WH);   // above the doorway
+  if (WH > DH) bigWall(3.85 + o, 6.18, 3.85 + o, 7.08, DH, WH);  // above the doorway
 }
 
 function build() {
@@ -417,9 +478,10 @@ function addItem(it, WH) {
       }
       break;
     case "washer": {
-      box(x,y,w,h,0,0.85,WHT,"washing machine (60×60×85)");
+      const BLK = S ? new THREE.MeshPhysicalMaterial({color: lin(0x17181a), roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.15}) : 0x222326;
+      box(x,y,w,h,0,0.85,BLK,"washing machine, black (60×60×85)");
       door(x+w/2, y, 0.42);
-      if (it.stacked) { box(x,y,w,h,0.85,1.70,WHT,"heat-pump dryer (stacked)"); door(x+w/2, y, 1.27); }
+      if (it.stacked) { box(x,y,w,h,0.85,1.70,BLK,"heat-pump dryer, black (stacked)"); door(x+w/2, y, 1.27); }
       break; }
     case "basin": {
       // Floor-standing vanity (owner, ref. photo): 2 rows x 2 handleless drawers, 12 cm stone top with integrated basin
@@ -479,7 +541,7 @@ function addItem(it, WH) {
 }
 function door(cx, y, cz) {   // round machine door on the front (north) face
   const g = new THREE.CylinderGeometry(0.2,0.2,0.02,40); g.rotateX(Math.PI/2);
-  const m = new THREE.Mesh(g, mat(0x9aa3ab)); m.position.set(cx, cz, y-0.01); world.add(m);
+  const m = new THREE.Mesh(g, mat(0x3c4248, {roughness: 0.15, metalness: 0.3})); m.position.set(cx, cz, y-0.01); world.add(m);
 }
 
 /* ---- views ---- */
@@ -542,9 +604,12 @@ renderer.domElement.addEventListener("mousemove", e => {
 function resize(){ renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); }
 addEventListener("resize", resize); resize();
 build(); view("bath");
+{ const f = new URLSearchParams(location.search).get("focus");          // link from comments.html
+  if (f) { const [fx, fy, fz] = f.split(",").map(Number);
+           if ([fx, fy, fz].every(Number.isFinite)) setTimeout(() => centerOn(new THREE.Vector3(fx, fz, fy)), 300); } }
 (function loop(now){ requestAnimationFrame(loop); if (anim) anim(now || performance.now()); controls.update(); renderer.render(scene, camera); })();
 </script>
 <script>window.COMMENTS_PAGE = "3d";</script>
-<script src="comments.js?v=4"></script>
+<script src="comments.js?v=5"></script>
 </body>
 </html>

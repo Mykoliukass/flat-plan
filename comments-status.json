@@ -1,3 +1,8 @@
 {
-  "2": { "status": "done", "date": "2026-11-22", "note": "Vanity is now floor-standing: walnut base with 2 × 2 drawers and a stone top." }
+  "2": {
+    "status": "done",
+    "date": "2026-11-22",
+    "decision": "Agreed — the vanity goes down to the floor.",
+    "note": "Floor-standing walnut base with 2 × 2 handleless drawers and a 12 cm stone top with integrated basin."
+  }
 }
