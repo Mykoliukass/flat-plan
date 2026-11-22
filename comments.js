@@ -3,8 +3,8 @@
    Fill in the two values below once the Supabase project exists — both are PUBLIC values meant for web pages
    (the database only allows reading and adding comments, never editing or deleting). */
 const COMMENTS_CONFIG = {
-  url: "",   // e.g. "https://abcdefghijk.supabase.co"
-  key: "",   // the "anon" / "publishable" key
+  url: "https://gwozuwxkqoloacudfsjm.supabase.co",
+  key: "sb_publishable_usIBmxpvX3zhvj7GoEazKA_jordw-jd",   // public publishable key (read + add only)
 };
 
 (function () {
