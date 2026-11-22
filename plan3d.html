@@ -45,7 +45,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="plan-data.js?v=2026-11-22d"></script>
+<script src="plan-data.js?v=2026-11-22e"></script>
 <script>
 /* Plan coordinates (x east, y south, metres) map to three.js as  x → x,  y → z,  height → y. */
 const P = window.PLAN;
@@ -166,29 +166,25 @@ function panel(x1, y1, x2, y2, z0, z1, key, label) {
   p.position.set((x1 + x2) / 2, (z0 + z1) / 2, (y1 + y2) / 2); world.add(p);
   if (label) { p.userData.label = label; pickables.push(p); }
 }
-// wall with tiled wainscot up to `tileTo`, walnut panelling above
-function finishWall(x1, y1, x2, y2, WH, tileTo) {
-  panel(x1, y1, x2, y2, 0, Math.min(tileTo, WH), "tile", `green gloss tiles 7.5×30 (to ${tileTo.toFixed(2)} m)`);
-  panel(x1, y1, x2, y2, tileTo, WH, "walnut", "walnut panelling");
+// tiled wall section from z0 to z1 (green gloss tiles)
+function tileWall(x1, y1, x2, y2, z0, z1) {
+  panel(x1, y1, x2, y2, z0, z1, "tile", "green gloss tiles 7.5×30");
 }
+// Bathroom finishes (owner, 2026-11-22): green tiles on ALL walls, floor to ceiling.
+// Walnut only on furniture: vanity, cabinets, service column, laundry-bay framing, recessed cabinet above the WC.
 function bathroomFinishes(WH) {
-  const o = 0.004, WAIN = 1.20, FULL = 2.10;   // tile heights: wainscot = WC frame top; bath alcove = above shower
-  // north wall (bedroom side): vanity/towel part gets wainscot, bath alcove full height
-  finishWall(3.85, 5.59 + o, 5.69, 5.59 + o, WH, WAIN);
-  finishWall(5.69, 5.59 + o, 6.49, 5.59 + o, WH, FULL);
-  // east (outer) wall inside the bath alcove
-  finishWall(6.49 - o, 5.59, 6.49 - o, 7.395, WH, FULL);
-  // back wall plane y = 7.395: bath end full height, shaft face beside WC wainscot
-  finishWall(5.69, 7.395 - o, 6.49, 7.395 - o, WH, FULL);
-  finishWall(5.42, 7.395 - o, 5.69, 7.395 - o, WH, WAIN);
-  finishWall(4.87, 7.395 - o, 5.42, 7.395 - o, WH, WAIN);       // WC frame front (cabinet above covers walnut)
-  // corridor wall behind the laundry corner
-  finishWall(3.85, 7.88 - o, 4.47, 7.88 - o, WH, WAIN);
-  // west wall (doorway 6.18–7.08)
-  finishWall(3.85 + o, 5.59, 3.85 + o, 6.18, WH, WAIN);
-  finishWall(3.85 + o, 7.08, 3.85 + o, 7.88, WH, WAIN);
+  const o = 0.004;
+  tileWall(3.85, 5.59 + o, 6.49, 5.59 + o, 0, WH);          // north wall (bedroom side), incl. bath alcove
+  tileWall(6.49 - o, 5.59, 6.49 - o, 7.395, 0, WH);         // east (outer) wall in the bath alcove
+  tileWall(5.42, 7.395 - o, 6.49, 7.395 - o, 0, WH);        // back wall: bath end + shaft face beside WC
+  // WC recess: tiles on the frame front up to 1.20, recessed walnut cabinet 1.20–2.15 stays visible, tiles above
+  tileWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);
+  tileWall(4.87, 7.395 - o, 5.42, 7.395 - o, 2.15, WH);
+  tileWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);          // corridor wall behind the laundry bay
+  tileWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);          // west wall, either side of the doorway
+  tileWall(3.85 + o, 7.08, 3.85 + o, 7.88, 0, WH);
   const DH = (P.heights||{}).doorway || 2.05;
-  if (WH > DH) panel(3.85 + o, 6.18, 3.85 + o, 7.08, DH, WH, "walnut", "walnut panelling");
+  if (WH > DH) tileWall(3.85 + o, 6.18, 3.85 + o, 7.08, DH, WH);   // above the doorway
 }
 
 function build() {
@@ -222,11 +218,16 @@ function build() {
     if (gl > sill) box(hor?rx:rx+t/2-0.01, hor?ry+t/2-0.01:ry, hor?rw:0.02, hor?0.02:rd, sill, gl, C.glass,
                        i===0?"balcony door + window":"window", {transparent:true,opacity:0.35});
     // window frames: white PVC mullion between fixed part and door, cross bar on the fixed part
-    if (opt && hor && gl > 0) {
-      const fy = ry + t/2 - 0.04;
-      if (opt.split) box(opt.split-0.035, fy, 0.07, 0.08, 0, gl, 0xf4f4f2, "window mullion (fixed | door)");
-      if (opt.transom && opt.transom < gl) box(rx, fy, (opt.split||x2)-rx, 0.08, opt.transom-0.035, opt.transom+0.035, 0xf4f4f2,
-                                               "cross bar on fixed glass (~1.05 m)");
+    if (opt && gl > 0) {
+      if (hor) {
+        const fy = ry + t/2 - 0.04;
+        if (opt.split) box(opt.split-0.035, fy, 0.07, 0.08, 0, gl, 0xf4f4f2, "window mullion (fixed | door)");
+        if (opt.transom && opt.transom < gl) box(rx, fy, (opt.split||rx+rw)-rx, 0.08, opt.transom-0.035, opt.transom+0.035, 0xf4f4f2,
+                                                 "window cross bar (~1.05 m)");
+      } else {
+        const fx = rx + t/2 - 0.04;
+        if (opt.transom && opt.transom < gl) box(fx, ry, 0.08, rd, opt.transom-0.035, opt.transom+0.035, 0xf4f4f2, "window cross bar (~1.05 m)");
+      }
     }
   });
   // existing service points (kitchen pipes as in the site photo, WC drain stub, hall boxes)
@@ -374,6 +375,8 @@ function addItem(it, WH) {
       box(x,y+0.03,0.025,0.03,z0,z1,m(),label); box(x+w-0.025,y+0.03,0.025,0.03,z0,z1,m(),label);
       for (let z=z0+0.05; z<z1; z+=0.12) box(x,y+0.04,w,0.02,z,z+0.02,m(),label+" (electric, hard-wired)");
       break; }
+    case "trim":
+      box(x,y,w,h,it.z0??0,clip(it.z1??2.15),WAL(Math.max(w,h),clip(it.z1??2.15)),label); break;
     case "slider":
       box(x,y,w,h,0,Math.min(2.05,WH),S ? tmat("walnut",h,2.05) : C.door,"sliding door (runs along the hall side)"); break;
   }

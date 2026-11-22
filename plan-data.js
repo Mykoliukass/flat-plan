@@ -49,8 +49,8 @@ window.PLAN = {
   // Windows / glazed doors: [x1,y1,x2,y2,wallThickness,label] — all go down to the floor
   windows: [
     [0.905,-0.25, 3.105,-0.25, 0.50, "balcony door + window 2.20", { split:2.055, transom:1.05 }],   // photo: left = fixed glass with cross bar ~1.05 m, right = door ~1.05 wide
-    [4.695,-0.25, 5.905,-0.25, 0.50, "window 1.21"],
-    [6.74, 0.99, 6.74, 2.19, 0.50, "window 1.20"],
+    [4.695,-0.25, 5.905,-0.25, 0.50, "window 1.21", { transom:1.05 }],   // bedroom north: same cross bar as the balcony glazing (owner)
+    [6.74, 0.99, 6.74, 2.19, 0.50, "window 1.20", { transom:1.05 }],       // bedroom east: same cross bar (owner)
   ],
 
   // Wall openings WITHOUT a door leaf (currently no interior doors): [x1,y1,x2,y2,label]
@@ -121,7 +121,9 @@ window.PLAN = {
         { k:"upper",  x:4.87, y:7.395,w:0.55, h:0.125,z0:1.20, z1:2.15, label:"recessed cabinet above WC" },
         // Laundry corner: standard 60 cm machines stick out ~11.5 cm past the wall plane
         { k:"washer", x:3.86, y:7.28, w:0.60, h:0.60, stacked:true, label:"washer + dryer" },
-        { k:"upper",  x:3.85, y:7.395,w:0.62, h:0.485,z0:1.75, z1:2.15, label:"cabinet above dryer" },
+        // walnut laundry bay: cabinet above comes forward to the machine fronts + side panel on the open side
+        { k:"upper",  x:3.85, y:7.28, w:0.62, h:0.60, z0:1.75, z1:2.15, label:"cabinet above dryer" },
+        { k:"trim",   x:4.46, y:7.28, w:0.02, h:0.115,z0:0,    z1:2.15, label:"walnut side panel (laundry bay)" },
         // Service column fills x 4.47–4.87 (40 cm) back to the corridor wall, front flush at 7.395
         { k:"box",    x:4.47, y:7.395,w:0.40, h:0.485,z0:0, z1:2.15, label:"service", role:"service" },
         // Vanity, towel rail between vanity and bath

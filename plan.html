@@ -31,7 +31,7 @@
 </header>
 <svg id="plan" xmlns="http://www.w3.org/2000/svg"></svg>
 
-<script src="plan-data.js?v=2026-11-22d"></script>
+<script src="plan-data.js?v=2026-11-22e"></script>
 <script>
 /* ================= DATA MODEL (all metres) =================
    Origin (0,0) = inner top-left corner of room 60-1 (living room).
@@ -127,6 +127,7 @@ function drawLayout(items){
     if(k==="box"){el("rect",{x,y,width:w,height:h,fill:"#e9e6dc",stroke:"#5b5b55","stroke-width":0.015});if(it.label)lbl(cx,cy+0.04,it.label,0.1);return;}
     if(k==="note"){lbl(x,y,it.label,0.09);return;}
     if(k==="mirror") return; // wall-mounted above the vanity: shown in 3D only
+    if(k==="trim"){el("rect",{x,y,width:w,height:h,fill:"#5a3a24"});return;}
     if(k==="upper"){el("rect",{x,y,width:w,height:h,fill:"none",stroke:"#5b5b55","stroke-width":0.012,"stroke-dasharray":"0.04 0.03"});return;}
     if(k==="towel"){el("rect",{x,y,width:w,height:h,fill:"#f6d7c9",stroke:"var(--door)","stroke-width":0.015});
       for(let i=1;i<5;i++)el("line",{x1:x+w*i/5,y1:y,x2:x+w*i/5,y2:y+h,stroke:"var(--door)","stroke-width":0.01});
