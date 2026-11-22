@@ -23,6 +23,7 @@
   <label>Bathroom <select id="bath"></select></label>
   <label>Ceiling <input id="ceil" type="number" step="0.05" min="2.4" max="3.2" value="2.70" style="width:60px" title="Z1–Z4 (provisional)"> m</label>
   <label>Finish <select id="finish"><option value="style">Green tiles + walnut + brass</option><option value="plain">Plain (layout only)</option></select></label>
+  <label>Big tiles <select id="bigtile"></select></label>
   <label><input id="cut" type="checkbox"> Cut walls at 1.2 m</label>
   <span>View:</span>
   <button data-v="bath">Bathroom</button>
@@ -234,21 +235,7 @@ const TEX = {
       g.fillRect(px, py, 0.8, 2 + rnd() * 6);
     }
   }) },
-  // large-format warm beige stone tiles 120 x 60 (owner's sample) -> covers 1.2 x 0.6 m
-  bigtile: { u:1.2, v:0.6, t: canvasTex(512, 256, (g, w, h) => {
-    g.fillStyle = "#9a886b"; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 160; i++) {                       // cloudy mottling
-      const x = rnd() * w, y = rnd() * h, r = 14 + rnd() * 60, light = rnd() > 0.45;
-      const gr = g.createRadialGradient(x, y, 0, x, y, r);
-      gr.addColorStop(0, light ? `rgba(176,160,130,${0.04 + rnd() * 0.07})` : `rgba(118,101,76,${0.04 + rnd() * 0.07})`);
-      gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    for (let i = 0; i < 1800; i++) {                      // fine stone specks
-      g.fillStyle = rnd() > 0.5 ? `rgba(92,77,55,${0.10 + rnd() * 0.18})` : `rgba(190,176,150,${0.08 + rnd() * 0.14})`;
-      const sz = 0.6 + rnd() * 1.8; g.fillRect(rnd() * w, rnd() * h, sz, sz);
-    }
-    g.strokeStyle = "#bfb39d"; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);   // thin grout joint
-  }) },
+  // large-format stone-look tiles 120 x 60 in several colourways (see BIGTILES) -> each covers 1.2 x 0.6 m
   // white marble with grey veins → covers 1.0 × 0.5 m
   marble: { u:1.0, v:0.5, t: canvasTex(512, 256, (g, w, h) => {
     g.fillStyle = PAL.marble; g.fillRect(0, 0, w, h);
@@ -271,11 +258,37 @@ const TEX = {
     for (let i = 0; i < 400; i++) { g.fillStyle = ["#c79b4b","#16473a","#7a2a22","#e8dcc2"][i % 4]; g.fillRect(rnd() * w, rnd() * h, 3, 3); }
   }) },
 };
+const MATP_EXTRA = {};
+// Big-tile colourways, chosen with colour-triangle theory (walnut H22 + green H153 are ~2 corners of a triad):
+const BIGTILES = {
+  lavender: { name: "Lavender-grey (triad, recommended)", base: "#bdb7c3", light: "rgba(214,209,219,A)", dark: "rgba(160,150,170,A)", grout: "#d4cfd8" },
+  clay:     { name: "Dusty clay (opposite of green)",     base: "#ccaea4", light: "rgba(220,198,190,A)", dark: "rgba(180,146,132,A)", grout: "#dcc9c1" },
+  white:    { name: "Warm white (neutral)",               base: "#e6e2db", light: "rgba(246,244,240,A)", dark: "rgba(210,201,188,A)", grout: "#eeebe6" },
+  beige:    { name: "Beige (previous)",                    base: "#9a886b", light: "rgba(176,160,130,A)", dark: "rgba(118,101,76,A)",  grout: "#bfb39d" },
+};
+Object.entries(BIGTILES).forEach(([k, c]) => {
+  TEX["bigtile_" + k] = { u:1.2, v:0.6, t: canvasTex(512, 256, (g, w, h) => {
+    g.fillStyle = c.base; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 160; i++) {                       // soft cloudy mottling
+      const x = rnd() * w, y = rnd() * h, r = 14 + rnd() * 60, light = rnd() > 0.45;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, (light ? c.light : c.dark).replace("A", (0.05 + rnd() * 0.08).toFixed(3)));
+      gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < 1800; i++) {                      // fine stone specks
+      g.fillStyle = (rnd() > 0.5 ? c.dark : c.light).replace("A", (0.10 + rnd() * 0.18).toFixed(3));
+      const sz = 0.6 + rnd() * 1.8; g.fillRect(rnd() * w, rnd() * h, sz, sz);
+    }
+    g.strokeStyle = c.grout; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);   // thin grout joint
+  }) };
+  MATP_EXTRA["bigtile_" + k] = { roughness: 0.55 };
+});
+let BIGKEY = "bigtile_lavender";
 // physical properties per finish
 const MATP = {
   tile:   { physical:true, roughness:0.18, clearcoat:1, clearcoatRoughness:0.04, normal:"tileN", normalScale:0.9 },
   walnut: { roughness:0.5 },   marble: { roughness:0.25 },  floor: { roughness:0.45 },
-  bigtile:{ roughness:0.55 },
+  ...MATP_EXTRA,
   rug:    { roughness:1 },     stone:  { roughness:0.92 },   stoneLight: { roughness:0.4 },
 };
 // material with the texture scaled to a real-world face size (w x h metres)
@@ -302,7 +315,7 @@ function panel(x1, y1, x2, y2, z0, z1, key, label) {
 }
 // wall finish helpers
 const tileWall   = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "tile",    "green gloss tiles 7.5×30");
-const bigWall    = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "bigtile", "large beige stone tiles 120×60");
+const bigWall    = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, BIGKEY, "large stone-look tiles 120×60 — " + BIGTILES[BIGKEY.slice(8)].name);
 const walnutWall = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "walnut",  "walnut wall panelling");
 // Bathroom finishes (owner, 2026-11-22, round 2):
 //  - green small tiles only as a band up to 2 rows above the bath rim (≈1.20 m): on the outer wall behind the bath,
@@ -590,6 +603,11 @@ sel.onchange = () => { try{localStorage.setItem("flat60-bath-v2",sel.value);}cat
 document.getElementById("ceil").onchange = build;
 document.getElementById("cut").onchange = build;
 document.getElementById("finish").onchange = build;
+{ const bs = document.getElementById("bigtile");
+  Object.entries(BIGTILES).forEach(([k, c]) => { const o = document.createElement("option"); o.value = k; o.textContent = c.name; bs.appendChild(o); });
+  try { const v = localStorage.getItem("flat60-bigtile"); if (v && BIGTILES[v]) bs.value = v; } catch (e) {}
+  BIGKEY = "bigtile_" + bs.value;
+  bs.onchange = () => { BIGKEY = "bigtile_" + bs.value; try { localStorage.setItem("flat60-bigtile", bs.value); } catch (e) {} build(); }; }
 
 /* ---- hover labels ---- */
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip");
