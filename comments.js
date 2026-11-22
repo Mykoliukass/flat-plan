@@ -90,18 +90,37 @@ const COMMENTS_CONFIG = {
       if (!r.ok) throw new Error(r.status);
       comments = await r.json();
     } catch (e) { list.innerHTML = `<p style="color:#b03a2e">Couldn't load comments (${e.message}).</p>`; return; }
+    // handled comments are listed in comments-status.json (kept with the site, updated by Claude)
+    let status = {};
+    try { const r = await fetch("comments-status.json?t=" + Date.now()); if (r.ok) status = await r.json(); } catch (e) {}
+    const isDone = c => status[c.id] && status[c.id].status === "done";
+    const open = comments.filter(c => !isDone(c)), done = comments.filter(isDone);
     let n = 0;
-    list.innerHTML = comments.length ? "" : `<p style="color:#8a8a84">No comments yet — be the first!</p>`;
-    comments.forEach(c => {
+    list.innerHTML = open.length ? "" : `<p style="color:#8a8a84">${done.length ? "All comments handled — add a new one!" : "No comments yet — be the first!"}</p>`;
+    const when = c => new Date(c.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    open.forEach(c => {
       const d = document.createElement("div"); d.className = "cmt";
       const pinNo = c.x != null ? ++n : null; c._pin = pinNo;
-      const when = new Date(c.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-      d.innerHTML = `<div class="meta">${pinNo ? `<span class="pin">${pinNo}</span>` : ""}<b></b> · ${when} · ${c.page.toUpperCase()}</div><div class="text"></div>`;
+      d.innerHTML = `<div class="meta">${pinNo ? `<span class="pin">${pinNo}</span>` : ""}<b></b> · ${when(c)} · ${c.page.toUpperCase()}</div><div class="text"></div>`;
       d.querySelector("b").textContent = c.name || "Anonymous";
       d.querySelector(".text").textContent = c.body;                 // textContent: no HTML injection
       if (pinNo) d.querySelector(".pin").onclick = () => focusPin(c);
       list.appendChild(d);
     });
+    done.forEach(c => { c._pin = null; });                           // no pins for handled comments
+    if (done.length) {
+      const det = document.createElement("details"); det.style.marginTop = "8px";
+      det.innerHTML = `<summary style="cursor:pointer;color:#2f8a57;font-weight:600">✓ Done (${done.length})</summary>`;
+      done.forEach(c => {
+        const d = document.createElement("div"); d.className = "cmt"; d.style.opacity = "0.75";
+        d.innerHTML = `<div class="meta"><b></b> · ${when(c)}</div><div class="text" style="text-decoration:line-through"></div><div class="meta reply" style="color:#2f8a57"></div>`;
+        d.querySelector("b").textContent = c.name || "Anonymous";
+        d.querySelector(".text").textContent = c.body;
+        d.querySelector(".reply").textContent = "✓ " + (status[c.id].note || "done");
+        det.appendChild(d);
+      });
+      list.appendChild(det);
+    }
     list.scrollTop = list.scrollHeight;
     refreshPins();
   }
