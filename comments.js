@@ -170,7 +170,8 @@ const COMMENTS_CONFIG = {
       g.fillStyle = color; g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2); g.fill();
       g.lineWidth = 4; g.strokeStyle = "#fff"; g.stroke();
       g.fillStyle = "#fff"; g.font = "bold 30px system-ui"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, 32, 34);
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+      const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, toneMapped: false }));
       s.scale.set(0.22, 0.22, 1); s.renderOrder = 10; return s;
     };
     refreshPins = () => {
