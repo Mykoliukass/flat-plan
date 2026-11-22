@@ -447,5 +447,7 @@ addEventListener("resize", resize); resize();
 build(); view("bath");
 (function loop(now){ requestAnimationFrame(loop); if (anim) anim(now || performance.now()); controls.update(); renderer.render(scene, camera); })();
 </script>
+<script>window.COMMENTS_PAGE = "3d";</script>
+<script src="comments.js?v=1"></script>
 </body>
 </html>
