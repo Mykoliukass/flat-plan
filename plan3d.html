@@ -26,6 +26,8 @@
   <label>Wood <select id="wood"></select></label>
   <label>Floor <select id="floortile"></select></label>
   <label>Small tiles height <select id="tileheight"><option value="band">2 rows above the bath</option><option value="full">To the ceiling (bath walls)</option></select></label>
+  <label>Bath head wall <select id="headtiles"><option value="on">Small tiles (to the bath edge)</option><option value="off">Big tiles</option></select></label>
+  <label>Strip by wood wall <select id="striptiles"><option value="big">Big tiles</option><option value="band">Small tiles, 2-row band</option><option value="full">Small tiles to the ceiling</option></select></label>
   <label>Small tiles <select id="greentile"></select></label>
   <label>Big tiles <select id="bigtile"></select></label>
   <label>Lighting <select id="lighting"><option value="standard">Standard</option><option value="baked">Realistic — bathroom (Blender, prototype)</option></select></label>
@@ -53,7 +55,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-<script src="plan-data.js?v=2026-11-24a"></script>
+<script src="plan-data.js?v=2026-11-24b"></script>
 <script>
 /* Plan coordinates (x east, y south, metres) map to three.js as  x → x,  y → z,  height → y. */
 const P = window.PLAN;
@@ -477,7 +479,7 @@ TEX.floor_planks = { u: 0.8, v: 1.6, t: canvasTex(512, 1024, (g, w, h) => {     
 MATP_EXTRA.floor_hexflower = { roughness: 0.25 }; MATP_EXTRA.floor_checker = { roughness: 0.3 };
 MATP_EXTRA.floor_terrazzo = { roughness: 0.5 };   MATP_EXTRA.floor_planks = { roughness: 0.55 };
 MATP_EXTRA.floor_emerald = { physical: true, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.05, normal: "tileNsq", normalScale: 0.9 };
-let FLOORKEY = "floor", TILEFULL = false;
+let FLOORKEY = "floor", TILEFULL = false, HEADTILES = true, STRIP = "big";
 // physical properties per finish
 const MATP = {
   walnut: { roughness:0.5 },   marble: { roughness:0.25 },  floor: { roughness:0.45 },
@@ -517,14 +519,17 @@ const walnutWall = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, WOO
 //  - large beige stone tiles everywhere else (above the green band and on all other walls)
 function bathroomFinishes(WH) {
   const o = 0.004, BAND = 1.20;
-  bigWall(3.85, 5.59 + o, 6.49, 5.59 + o, 0, WH);                 // bedroom wall (vanity, towel rail, bath head end)
+  bigWall(3.85, 5.59 + o, 5.69, 5.59 + o, 0, BAND);               // bedroom wall: vanity + towel rail part
+  bigWall(3.85, 5.59 + o, 5.69, 5.59 + o, BAND, WH);
+  (HEADTILES ? tileWall : bigWall)(5.69, 5.59 + o, 6.49, 5.59 + o, 0, BAND);          // bath head end (comment #9): ends at the bath edge
+  (HEADTILES && TILEFULL ? tileWall : bigWall)(5.69, 5.59 + o, 6.49, 5.59 + o, BAND, WH);
   const upper = TILEFULL ? tileWall : bigWall;                     // "Small tiles height": band or up to the ceiling
   tileWall(6.49 - o, 5.59, 6.49 - o, 7.395, 0, BAND);             // outer wall behind the bath ("middle")
   upper(6.49 - o, 5.59, 6.49 - o, 7.395, BAND, WH);
   tileWall(5.69, 7.395 - o, 6.49, 7.395 - o, 0, BAND);            // bath end ("right")
   upper(5.69, 7.395 - o, 6.49, 7.395 - o, BAND, WH);
-  tileWall(5.42, 7.395 - o, 5.69, 7.395 - o, 0, BAND);            // strip between the wood wall and the bath (band only)
-  bigWall(5.42, 7.395 - o, 5.69, 7.395 - o, BAND, WH);
+  (STRIP === "big" ? bigWall : tileWall)(5.42, 7.395 - o, 5.69, 7.395 - o, 0, BAND);  // strip by the wood wall (comment #10)
+  (STRIP === "full" ? tileWall : bigWall)(5.42, 7.395 - o, 5.69, 7.395 - o, BAND, WH);
   walnutWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);          // toilet wall: wood up to the frame top; the cabinet above is wood too
   bigWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);                 // corridor wall behind the laundry bay
   bigWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);                 // west wall, either side of the doorway
@@ -830,9 +835,9 @@ function addItem(it, WH) {
         led.position.set(x + w / 2, 0.01, y + h - 0.065); world.add(led);                   // warm LED strip in the plinth
         const gl = new THREE.PointLight(lin(0xffc98a), 0.3, 1.0, 2); gl.position.set(x + w / 2, 0.03, y + h - 0.02); world.add(gl);
         box(x, y, w, h - 0.02, cz0, cz1, mat(0x140c07), "vanity carcass (walnut, floor-standing)");
-        const gap = 0.008, fw = (w - gap) / 2, fh = (cz1 - cz0 - gap) / 2;
+        const gap = 0.008, fw = w, fh = (cz1 - cz0 - gap) / 2;          // 2 full-width drawers (comment #8)
         const tray = mat(0xddd4c6, {roughness: 0.7});
-        for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+        for (let r = 0; r < 2; r++) for (let c = 0; c < 1; c++) {
           const fx = x + c * (fw + gap), fz0 = cz0 + r * (fh + gap), id = "drawer:" + r + c;
           const g = new THREE.Group(); world.add(g);
           const parts = [box(fx, y + h - 0.02, fw, 0.02, fz0, fz0 + fh, WAL(fw, fh), null),             // front
@@ -841,7 +846,7 @@ function addItem(it, WH) {
                          box(fx + fw - 0.032, y + 0.05, 0.012, h - 0.07, fz0 + 0.03, fz0 + fh - 0.04, tray, null),
                          box(fx + 0.02, y + 0.05, fw - 0.04, h - 0.07, fz0 + 0.02, fz0 + 0.032, tray, null)];   // bottom
           parts.forEach(m => { world.remove(m); g.add(m); });
-          makeClickable(g, id, (r ? "top" : "bottom") + " " + (c ? "right" : "left") + " drawer");
+          makeClickable(g, id, (r ? "top" : "bottom") + " drawer (full width)");
           registerMover(id, t => { g.position.z = 0.36 * t; });                            // pulls out towards the room (+z)
         }
         box(x - 0.005, y, w + 0.01, h + 0.01, cz1, top, tmat("stoneLight", w, h), label + " - stone top, integrated basin, top at 88 cm");
@@ -950,7 +955,12 @@ document.getElementById("lighting").onchange = e => {
   const th = document.getElementById("tileheight");
   try { const v = localStorage.getItem("flat60-tileheight"); if (v) th.value = v; } catch (e) {}
   TILEFULL = th.value === "full";
-  th.onchange = () => { TILEFULL = th.value === "full"; try { localStorage.setItem("flat60-tileheight", th.value); } catch (e) {} build(); }; }
+  th.onchange = () => { TILEFULL = th.value === "full"; try { localStorage.setItem("flat60-tileheight", th.value); } catch (e) {} build(); };
+  const ht = document.getElementById("headtiles"), st = document.getElementById("striptiles");
+  try { const v = localStorage.getItem("flat60-headtiles"); if (v) ht.value = v; const w2 = localStorage.getItem("flat60-strip"); if (w2) st.value = w2; } catch (e) {}
+  HEADTILES = ht.value === "on"; STRIP = st.value;
+  ht.onchange = () => { HEADTILES = ht.value === "on"; try { localStorage.setItem("flat60-headtiles", ht.value); } catch (e) {} build(); };
+  st.onchange = () => { STRIP = st.value; try { localStorage.setItem("flat60-strip", st.value); } catch (e) {} build(); }; }
 { const ws = document.getElementById("wood");
   Object.entries(WOODS).forEach(([k, c]) => { const o = document.createElement("option"); o.value = k; o.textContent = c.name; ws.appendChild(o); });
   try { const v = localStorage.getItem("flat60-wood"); if (v && WOODS[v]) ws.value = v; } catch (e) {}

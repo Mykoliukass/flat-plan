@@ -131,7 +131,7 @@ window.PLAN = {
         // Service column fills x 4.47–4.87 (40 cm) back to the corridor wall, front flush at 7.395
         { k:"box",    x:4.47, y:7.395,w:0.40, h:0.485,z0:0, z1:"ceiling", hinge:"right", label:"service", role:"service" },
         // Vanity, towel rail between vanity and bath
-        { k:"basin",  x:3.87, y:5.59, w:0.90, h:0.48, label:"vanity 0.90 (floor-standing, 2x2 drawers)" },
+        { k:"basin",  x:3.87, y:5.59, w:0.90, h:0.48, label:"vanity 0.90 (floor-standing, 2 drawers)" },
         { k:"mirror", x:3.87, y:5.59, w:0.90, h:0.03, z0:1.18, z1:2.18, label:"pebble mirror ~80 cm, stone-grey frame" },
         { k:"towel",  x:4.98, y:5.59, w:0.50, h:0.08, z0:0.30, z1:1.50, label:"heated towel rail" },
       ],

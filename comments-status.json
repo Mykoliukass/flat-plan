@@ -22,5 +22,35 @@
     "date": "2026-11-24",
     "decision": "Added as a switchable option; final colour pick stays open.",
     "note": "3D view: Small tiles → Olive / moss; pairs with Big tiles → Warm white."
+  },
+  "3": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Used Blender instead of 3ds Max / SketchUp.",
+    "note": "3D view → Lighting → Realistic: Blender-modelled fixtures, baked light and real reflections."
+  },
+  "4": {
+    "status": "declined",
+    "date": "2026-11-24",
+    "decision": "Not for us — Zuru designs and factory-builds whole new houses.",
+    "note": "Kept as inspiration; our project is an interior in an existing flat."
+  },
+  "8": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Agreed — two big full-width drawers.",
+    "note": "Vanity now has 2 full-width drawers (top + bottom) instead of 2 × 2."
+  },
+  "9": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Added as an option, on by default.",
+    "note": "\"Bath head wall\" menu: small tiles on the wall at the head end of the bath, ending at the bath edge; follows \"Small tiles height\"."
+  },
+  "10": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Agreed — big tiles on the narrow strip by default.",
+    "note": "\"Strip by wood wall\" menu: big tiles / small tiles 2-row band / small tiles to the ceiling."
   }
 }
