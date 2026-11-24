@@ -44,11 +44,11 @@
   <a href="plan.html" style="margin-left:auto">2D plan</a>
 </header>
 <div id="tip"></div>
-<div id="help">Drag to rotate · right-drag / two-finger to pan · scroll to zoom · <b>double-click</b> any spot to rotate around it · hover an item for its name</div>
+<div id="help">Drag to rotate · right-drag / two-finger to pan · scroll to zoom · <b>click</b> doors, cabinets &amp; drawers to open them · <b>double-click</b> any spot to rotate around it · hover an item for its name</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="plan-data.js?v=2026-11-22g"></script>
+<script src="plan-data.js?v=2026-11-24a"></script>
 <script>
 /* Plan coordinates (x east, y south, metres) map to three.js as  x → x,  y → z,  height → y. */
 const P = window.PLAN;
@@ -409,12 +409,60 @@ function bathroomFinishes(WH) {
   bigWall(6.49 - o, 5.59, 6.49 - o, 7.395, BAND, WH);
   tileWall(5.42, 7.395 - o, 6.49, 7.395 - o, 0, BAND);            // bath end ("right") + strip between walnut and bath
   bigWall(5.42, 7.395 - o, 6.49, 7.395 - o, BAND, WH);
-  walnutWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, WH);            // toilet wall: walnut floor to ceiling
+  walnutWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);          // toilet wall: wood up to the frame top; the cabinet above is wood too
   bigWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);                 // corridor wall behind the laundry bay
   bigWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);                 // west wall, either side of the doorway
   bigWall(3.85 + o, 7.08, 3.85 + o, 7.88, 0, WH);
   const DH = (P.heights||{}).doorway || 2.05;
   if (WH > DH) bigWall(3.85 + o, 6.18, 3.85 + o, 7.08, DH, WH);  // above the doorway
+}
+
+/* ================= OPENABLE THINGS (doors, cabinet doors, drawers) ================= */
+const OPENSTATE = {};          // id -> wanted state (true = open); survives rebuilds
+const ANIM = {};               // id -> current progress 0..1
+let movers = [];               // rebuilt by build(): { id, apply(t) }
+const ease = t => t * t * (3 - 2 * t);
+function registerMover(id, apply) {
+  if (ANIM[id] == null) ANIM[id] = OPENSTATE[id] ? 1 : 0;
+  apply(ease(ANIM[id])); movers.push({ id, apply });
+}
+function stepMovers(dt) {
+  movers.forEach(m => {
+    const target = OPENSTATE[m.id] ? 1 : 0, cur = ANIM[m.id];
+    if (cur === target) return;
+    const next = cur + Math.sign(target - cur) * Math.min(Math.abs(target - cur), dt * 1.4);
+    ANIM[m.id] = next; m.apply(ease(next));
+  });
+}
+function makeClickable(obj, id, label) {
+  obj.traverse(o => { if (o.isMesh) { o.userData.toggleId = id; o.userData.label = label + " — click to open / close"; pickables.push(o); } });
+}
+// a leaf that rotates about a vertical hinge at plan point (hx, hy); angles are three.js rotation.y values
+function hingedLeaf(id, hx, hy, z0, z1, len, thick, closedRot, openRot, material, label, handles) {
+  const g = new THREE.Group(); g.position.set(hx, z0, hy); world.add(g);
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(len, z1 - z0, thick), mat(material)); leaf.position.set(len / 2, (z1 - z0) / 2, 0); g.add(leaf);
+  if (!S) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(leaf.geometry), new THREE.LineBasicMaterial({color: 0x6b6b66})); e.position.copy(leaf.position); g.add(e); }
+  if (handles) [1, -1].forEach(side => {                       // lever handles on both faces
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.018, 0.018), S ? brass() : mat(C.steel));
+    h.position.set(len - 0.12, 1.02 - z0, side * (thick / 2 + 0.035)); g.add(h);
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.01, 20), S ? brass() : mat(C.steel));
+    r.rotation.x = Math.PI / 2; r.position.set(len - 0.07, 1.02 - z0, side * (thick / 2 + 0.005)); g.add(r);
+  });
+  makeClickable(g, id, label);
+  registerMover(id, t => { g.rotation.y = closedRot + (openRot - closedRot) * t; });
+  return g;
+}
+// cabinet whose front faces north (-z), front plane at y, body y..y+d; door hinged left or right, opens outward
+function cabinet(id, x, y, w, d, z0, z1, hinge, label, extras) {
+  const t = 0.018, wood = S ? tmat(WOODKEY, w, z1 - z0) : C.wood, inside = mat(0xddd4c6, {roughness: 0.7});
+  box(x, y + d - t, w, t, z0, z1, inside, null, {noEdges: true});                 // back
+  box(x, y, t, d, z0, z1, wood, null, {noEdges: true}); box(x + w - t, y, t, d, z0, z1, wood, null, {noEdges: true});
+  box(x, y, w, d, z0, z0 + t, wood, null, {noEdges: true}); box(x, y, w, d, z1 - t, z1, wood, null, {noEdges: true});
+  for (let z = z0 + 0.36; z < z1 - 0.15; z += 0.36) box(x + t, y + 0.015, w - 2 * t, d - 0.03, z, z + t, inside, null, {noEdges: true});
+  if (extras) extras();
+  const L = Math.PI / 180;
+  if (hinge === "right") hingedLeaf(id, x + w, y - 0.011, z0, z1, w, 0.02, -180 * L, -286 * L, wood, label, false);
+  else                   hingedLeaf(id, x,     y - 0.011, z0, z1, w, 0.02,    0 * L,  106 * L, wood, label, false);
 }
 
 function build() {
@@ -423,6 +471,7 @@ function build() {
   const WH = document.getElementById("cut").checked ? 1.2 : H;     // displayed wall height
   const HT = P.heights || {}, DOOR = HT.doorway || 2.05, SILL = 0, HEAD = HT.windowTop || 2.20;   // measured: windows go to the floor
 
+  movers = [];
   const layoutName = document.getElementById("bath").value;
   S = document.getElementById("finish").value === "style";
   hemi.color.copy(lin(S ? 0xfff0dc : 0xffffff)); hemi.intensity = S ? 0.45 : 0.6;
@@ -503,7 +552,13 @@ function build() {
   });
 
   // entrance door leaf (closed)
-  box(2.35,7.91,1.05,0.05,0,Math.min(DOOR,WH),C.door,"entrance door (opens inward)");
+  // hinged room doors (click to open). Balcony door is part of the glazing and stays closed.
+  (P.doorLeaves || []).filter(d => d.name !== "balcony door").forEach(d => {
+    const Hd = Math.min(DOOR - 0.01, WH), entrance = d.name === "entrance";
+    const m = entrance ? (S ? mat(0xa77b4f, {roughness: 0.6}) : C.door) : (S ? tmat(WOODKEY, d.len, Hd) : C.door);
+    hingedLeaf("door:" + d.name, d.hinge[0], d.hinge[1], 0, Hd, d.len, 0.04, -d.closed * Math.PI / 180, -d.open * Math.PI / 180, m,
+               d.name + (entrance ? " (opens inward)" : " (opens outward)"), true);
+  });
 
   // bathroom design items
   const items = P.layouts.bathroom[layoutName] || [];
@@ -559,15 +614,21 @@ function addItem(it, WH) {
       if (it.role==="frame") {
         box(x,y,w,h,it.z0??0,clip(it.z1??1.2),C.box,"WC frame in the shaft recess (slim 8 cm cistern), flush with the wall");
         box(x+w/2-0.12,y-0.012,0.24,0.01,1.00,1.15,MET(),"flush plate");
+      } else if (it.role==="service") {
+        const z1 = clip(it.z1??2.15);
+        cabinet("cab:service", x, y, w, h, 0, z1, it.hinge || "right", "service column (water valve, siphon, sockets, detergents)", () => {
+          // connections behind the door: valve + hose tap, 2-inlet siphon, two sockets
+          cyl(x + w / 2 - 0.08, y + h - 0.06, 0.95, 1.00, 0.02, S ? brass() : C.steel, "cold-water valve for the washer");
+          box(x + w / 2 + 0.02, y + h - 0.09, 0.10, 0.07, 0.80, 0.95, mat(0xbdbdb8), "2-inlet siphon (washer drain + dryer condensate)");
+          [1.25, 1.36].forEach(z => box(x + w / 2 - 0.04, y + h - 0.03, 0.08, 0.012, z - 0.04, z + 0.04, mat(0xf4f4f2), "IP44 socket"));
+        });
       } else
-        box(x,y,w,h,it.z0??0,clip(it.z1??1.2), it.role==="service"?WAL(w,clip(it.z1??1.2)):C.box,
-            it.role==="service" ? "service column (flush): water valve, siphon, 2 sockets, detergents" : (it.label||"boxing"));
+        box(x,y,w,h,it.z0??0,clip(it.z1??1.2), C.box, it.label||"boxing");
       break;
     case "upper":
       if (WH > (it.z0??1.45)) {
         const z0 = it.z0??1.45, z1 = clip(it.z1??2.15);
-        box(x,y,w,h,z0,z1,WAL(w,z1-z0),it.label||"upper cabinet");
-        if (S) box(x+w/2-0.08,y-0.015,0.16,0.012,z0+0.05,z0+0.07,brass(),"brass handle");
+        cabinet("cab:" + (it.label || "upper"), x, y, w, h, z0, z1, it.hinge || "left", it.label || "upper cabinet");
       }
       break;
     case "washer": {
@@ -587,9 +648,18 @@ function addItem(it, WH) {
         const gl = new THREE.PointLight(lin(0xffc98a), 0.3, 1.0, 2); gl.position.set(x + w / 2, 0.03, y + h - 0.02); world.add(gl);
         box(x, y, w, h - 0.02, cz0, cz1, mat(0x140c07), "vanity carcass (walnut, floor-standing)");
         const gap = 0.008, fw = (w - gap) / 2, fh = (cz1 - cz0 - gap) / 2;
+        const tray = mat(0xddd4c6, {roughness: 0.7});
         for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
-          const fx = x + c * (fw + gap), fz0 = cz0 + r * (fh + gap);
-          box(fx, y + h - 0.02, fw, 0.02, fz0, fz0 + fh, WAL(fw, fh), (r ? "top" : "bottom") + " " + (c ? "right" : "left") + " drawer (push-to-open)");
+          const fx = x + c * (fw + gap), fz0 = cz0 + r * (fh + gap), id = "drawer:" + r + c;
+          const g = new THREE.Group(); world.add(g);
+          const parts = [box(fx, y + h - 0.02, fw, 0.02, fz0, fz0 + fh, WAL(fw, fh), null),             // front
+                         box(fx + 0.02, y + 0.05, fw - 0.04, 0.012, fz0 + 0.03, fz0 + fh - 0.04, tray, null),  // back
+                         box(fx + 0.02, y + 0.05, 0.012, h - 0.07, fz0 + 0.03, fz0 + fh - 0.04, tray, null),  // sides
+                         box(fx + fw - 0.032, y + 0.05, 0.012, h - 0.07, fz0 + 0.03, fz0 + fh - 0.04, tray, null),
+                         box(fx + 0.02, y + 0.05, fw - 0.04, h - 0.07, fz0 + 0.02, fz0 + 0.032, tray, null)];   // bottom
+          parts.forEach(m => { world.remove(m); g.add(m); });
+          makeClickable(g, id, (r ? "top" : "bottom") + " " + (c ? "right" : "left") + " drawer");
+          registerMover(id, t => { g.position.z = 0.36 * t; });                            // pulls out towards the room (+z)
         }
         box(x - 0.005, y, w + 0.01, h + 0.01, cz1, top, tmat("stoneLight", w, h), label + " - stone top, integrated basin, top at 88 cm");
         box(x + 0.12, y + 0.09, w - 0.24, 0.30, top - 0.03, top + 0.001, mat(0xdcd7ce, {roughness: 0.3}), "integrated basin");
@@ -699,6 +769,16 @@ document.getElementById("finish").onchange = build;
   BIGKEY = "bigtile_" + bs.value;
   bs.onchange = () => { BIGKEY = "bigtile_" + bs.value; try { localStorage.setItem("flat60-bigtile", bs.value); } catch (e) {} build(); }; }
 
+/* ---- click to open / close ---- */
+{ const cv = renderer.domElement; let down = null;
+  cv.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
+  cv.addEventListener("pointerup", e => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5 || window.__cmtPinning) return;
+    const r = new THREE.Raycaster(); r.setFromCamera(new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), camera);
+    const hit = r.intersectObjects(world.children, true).find(h => h.object.isMesh && !(h.object.material && h.object.material.transparent));
+    if (hit && hit.object.userData.toggleId) { const id = hit.object.userData.toggleId; OPENSTATE[id] = !OPENSTATE[id]; }
+  });
+}
 /* ---- hover labels ---- */
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip");
 renderer.domElement.addEventListener("mousemove", e => {
@@ -707,6 +787,7 @@ renderer.domElement.addEventListener("mousemove", e => {
   const hit = ray.intersectObjects(pickables)[0];
   if (hit) { tip.textContent = hit.object.userData.label; tip.style.display="block"; tip.style.left=(e.clientX+12)+"px"; tip.style.top=(e.clientY+12)+"px"; }
   else tip.style.display="none";
+  renderer.domElement.style.cursor = hit && hit.object.userData.toggleId ? "pointer" : "";
 });
 
 function resize(){ renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); }
@@ -715,9 +796,12 @@ build(); view("bath");
 { const f = new URLSearchParams(location.search).get("focus");          // link from comments.html
   if (f) { const [fx, fy, fz] = f.split(",").map(Number);
            if ([fx, fy, fz].every(Number.isFinite)) setTimeout(() => centerOn(new THREE.Vector3(fx, fz, fy)), 300); } }
-(function loop(now){ requestAnimationFrame(loop); if (anim) anim(now || performance.now()); controls.update(); renderer.render(scene, camera); })();
+let lastT = performance.now();
+(function loop(now){ requestAnimationFrame(loop); now = now || performance.now();
+  stepMovers(Math.min(0.1, (now - lastT) / 1000)); lastT = now;
+  if (anim) anim(now); controls.update(); renderer.render(scene, camera); })();
 </script>
 <script>window.COMMENTS_PAGE = "3d";</script>
-<script src="comments.js?v=5"></script>
+<script src="comments.js?v=6"></script>
 </body>
 </html>

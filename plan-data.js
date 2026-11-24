@@ -63,6 +63,10 @@ window.PLAN = {
   // Both open INTO the flat. Hinge side is an assumption — flip `hinge`/`closed` to mirror.
   doorLeaves: [
     { name:"entrance",     hinge:[3.40,7.88], len:1.05, closed:180, open:270 }, // opens north into hall
+    // Interior doors (owner, 2026-11-24): normal hinged doors in the cabinet wood, opening OUTWARD into the living room / hall.
+    // Hinged at the north jamb so the open bathroom door doesn't clash with the entrance door.
+    { name:"bathroom door",  hinge:[3.70,6.18],  len:0.90, closed:90, open:180 },
+    { name:"bedroom door",   hinge:[3.70,3.005], len:0.90, closed:90, open:180 },
     { name:"balcony door", hinge:[3.105,0.00], len:1.05, closed:180, open: 90 }, // RIGHT part of the glazing, hinged at the right, opens inward; ~1.05 wide (from photo)
   ],
 
@@ -103,7 +107,7 @@ window.PLAN = {
   marks: [],
 
   /* Design options. Each layout is a list of items {k:kind, x,y,w,h (m), label}
-     kinds: wc, basin, shower, bath, washer, box (cabinet/boxing), glass (line x,y→x2,y2), slider */
+     kinds: wc, basin, shower, bath, washer, box (cabinet/boxing), glass (line x,y→x2,y2); cabinets open via hinge:"left"|"right" */
   layouts: {
     bathroom: {
       "C — bath on east wall (current proposal)": [
@@ -118,19 +122,18 @@ window.PLAN = {
         { k:"box",    x:4.87, y:7.395,w:0.55, h:0.125,z0:0,    z1:1.20, label:"", role:"frame" },
         { k:"wc",     x:4.965,y:6.875,w:0.36, h:0.52, label:"wall-hung WC" },
         // cabinet in the same recess, above the cistern, flush with the wall (12.5 cm deep)
-        { k:"upper",  x:4.87, y:7.395,w:0.55, h:0.125,z0:1.20, z1:"ceiling", label:"recessed cabinet above WC" },
+        { k:"upper",  x:4.87, y:7.395,w:0.55, h:0.125,z0:1.20, z1:"ceiling", hinge:"right", label:"recessed cabinet above WC" },
         // Laundry corner: standard 60 cm machines stick out ~11.5 cm past the wall plane
         { k:"washer", x:3.86, y:7.28, w:0.60, h:0.60, stacked:true, label:"washer + dryer" },
         // walnut laundry bay: cabinet above comes forward to the machine fronts + side panel on the open side
-        { k:"upper",  x:3.85, y:7.28, w:0.62, h:0.60, z0:1.75, z1:"ceiling", label:"cabinet above dryer" },
+        { k:"upper",  x:3.85, y:7.28, w:0.62, h:0.60, z0:1.75, z1:"ceiling", hinge:"left", label:"cabinet above dryer" },
         { k:"trim",   x:4.46, y:7.28, w:0.02, h:0.115,z0:0,    z1:"ceiling", label:"walnut side panel (laundry bay)" },
         // Service column fills x 4.47–4.87 (40 cm) back to the corridor wall, front flush at 7.395
-        { k:"box",    x:4.47, y:7.395,w:0.40, h:0.485,z0:0, z1:"ceiling", label:"service", role:"service" },
+        { k:"box",    x:4.47, y:7.395,w:0.40, h:0.485,z0:0, z1:"ceiling", hinge:"right", label:"service", role:"service" },
         // Vanity, towel rail between vanity and bath
         { k:"basin",  x:3.87, y:5.59, w:0.90, h:0.48, label:"vanity 0.90 (floor-standing, 2x2 drawers)" },
         { k:"mirror", x:3.87, y:5.59, w:0.90, h:0.03, z0:1.18, z1:2.18, label:"pebble mirror ~80 cm, stone-grey frame" },
         { k:"towel",  x:4.98, y:5.59, w:0.50, h:0.08, z0:0.30, z1:1.50, label:"heated towel rail" },
-        { k:"slider", x:3.65, y:5.19, w:0.05, h:0.99, label:"sliding door (hall side)" },
       ],
       "A — walk-in shower": [
         { k:"box",    x:4.90, y:7.33, w:0.54, h:0.20, label:"WC frame boxing" },
@@ -139,7 +142,6 @@ window.PLAN = {
         { k:"glass",  x:5.60, y:6.40, x2:5.60, y2:7.39 },
         { k:"basin",  x:3.92, y:5.59, w:0.90, h:0.48, label:"vanity 0.90" },
         { k:"washer", x:3.86, y:7.27, w:0.60, h:0.60, label:"washer/dryer" },
-        { k:"slider", x:3.66, y:5.17, w:0.05, h:0.99, label:"sliding door (hall side)" },
       ],
       "B — bath + washer": [
         { k:"box",    x:4.90, y:7.33, w:0.54, h:0.20, label:"WC frame boxing" },
@@ -149,7 +151,6 @@ window.PLAN = {
         { k:"basin",  x:3.92, y:5.59, w:0.80, h:0.46, label:"vanity 0.80" },
         { k:"washer", x:5.90, y:6.74, w:0.60, h:0.60, label:"washer" },
         { k:"box",    x:3.86, y:7.32, w:0.80, h:0.55, label:"tall cabinet" },
-        { k:"slider", x:3.66, y:5.17, w:0.05, h:0.99, label:"sliding door (hall side)" },
       ],
       "none (empty)": [],
     },

@@ -77,7 +77,7 @@ const STATUS = {
   /* ---------- pin picking ---------- */
   let pinning = false, pinned = null, comments = [];
   const setPinning = on => {
-    pinning = on; $("cmt-pin").classList.toggle("pinning", on);
+    pinning = on; window.__cmtPinning = on; $("cmt-pin").classList.toggle("pinning", on);
     $("cmt-pin").textContent = on ? (PAGE === "3d" ? "Click a spot in 3D…" : "Click a spot on the plan…") : "📍 Pin to a spot";
   };
   $("cmt-pin").onclick = () => { if (pinned) { pinned = null; $("cmt-pinned").textContent = ""; refreshPins(); } setPinning(!pinning); };
