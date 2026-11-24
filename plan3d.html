@@ -23,6 +23,7 @@
   <label>Bathroom <select id="bath"></select></label>
   <label>Ceiling <input id="ceil" type="number" step="0.05" min="2.4" max="3.2" value="2.70" style="width:60px" title="Z1–Z4 (provisional)"> m</label>
   <label>Finish <select id="finish"><option value="style">Green tiles + walnut + brass</option><option value="plain">Plain (layout only)</option></select></label>
+  <label>Small tiles <select id="greentile"></select></label>
   <label>Big tiles <select id="bigtile"></select></label>
   <label><input id="cut" type="checkbox"> Cut walls at 1.2 m</label>
   <span>View:</span>
@@ -145,31 +146,22 @@ function dataTex(w, h, draw) {                    // linear texture (normal maps
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const TEX = {
   // 2 vertical tiles of 7.5 × 30 cm, stack-bonded, glossy green with light grout  → covers 0.15 × 0.30 m
-  tile: { u:0.15, v:0.30, t: canvasTex(256, 512, (g, w, h) => {
-    g.fillStyle = PAL.grout; g.fillRect(0, 0, w, h);
-    ["#123f2b", "#164a33"].forEach((shade, i) => {
-      const x = i * 128 + 4, gr = g.createLinearGradient(x, 0, x + 120, h);
-      gr.addColorStop(0, shade); gr.addColorStop(0.5, i ? "#1b5439" : "#195036"); gr.addColorStop(1, shade);
-      g.fillStyle = gr; g.fillRect(x, 4, 120, h - 8);
-      for (let k = 0; k < 40; k++) {                 // glaze pooling: darker/lighter clouds
-        g.fillStyle = rnd() > 0.5 ? "rgba(10,40,25,0.06)" : "rgba(80,150,110,0.05)";
-        g.beginPath(); g.arc(x + rnd() * 120, 4 + rnd() * (h - 8), 6 + rnd() * 22, 0, Math.PI * 2); g.fill();
-      }
-    }) }) },
-  // normal map for the tiles: soft handmade waves, bevelled edges, sunken grout
-  tileN: { u:0.15, v:0.30, t: dataTex(256, 512, (g, w, h) => {
+  // normal map for the small vertical tiles: 4 tiles x 2 rows of 7.5 x 30 cm -> covers 0.30 x 0.60 m.
+  // Soft handmade waves, bevelled edges, sunken grout.
+  tileN: { u:0.30, v:0.60, t: dataTex(512, 1024, (g, w, h) => {
     g.fillStyle = "rgb(128,128,255)"; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 2; i++) {
-      const x = i * 128 + 4, tw = 120, th = h - 8;
-      for (let k = 0; k < 30; k++) {
-        const r = 10 + rnd() * 30, cx = x + rnd() * tw, cy = 4 + rnd() * th, dx = (rnd() - 0.5) * 30, dy = (rnd() - 0.5) * 30;
+    const TW = 128, TH = 512;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) {
+      const x = i * TW + 4, y = r * TH + 4, tw = TW - 8, th = TH - 8;
+      for (let k = 0; k < 26; k++) {
+        const rad = 10 + rnd() * 34, cx = x + rnd() * tw, cy = y + rnd() * th, dx = (rnd() - 0.5) * 36, dy = (rnd() - 0.5) * 36;
         g.fillStyle = "rgba(" + ((128 + dx) | 0) + "," + ((128 + dy) | 0) + ",250,0.35)";
-        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.fill();
       }
-      g.fillStyle = "rgb(70,128,225)";  g.fillRect(x, 4, 4, th);
-      g.fillStyle = "rgb(186,128,225)"; g.fillRect(x + tw - 4, 4, 4, th);
-      g.fillStyle = "rgb(128,186,225)"; g.fillRect(x, 4, tw, 4);
-      g.fillStyle = "rgb(128,70,225)";  g.fillRect(x, h - 8, tw, 4);
+      g.fillStyle = "rgb(70,128,225)";  g.fillRect(x, y, 4, th);
+      g.fillStyle = "rgb(186,128,225)"; g.fillRect(x + tw - 4, y, 4, th);
+      g.fillStyle = "rgb(128,186,225)"; g.fillRect(x, y, tw, 4);
+      g.fillStyle = "rgb(128,70,225)";  g.fillRect(x, y + th - 4, tw, 4);
     } }) },
   // stone-grey textured frame (mirror) -> 0.4 x 0.4 m
   stone: { u:0.4, v:0.4, t: canvasTex(256, 256, (g, w, h) => {
@@ -264,6 +256,7 @@ const BIGTILES = {
   lavender: { name: "Lavender-grey ✓ chosen", base: "#bdb7c3", light: "rgba(214,209,219,A)", dark: "rgba(160,150,170,A)", grout: "#d4cfd8" },
   clay:     { name: "Dusty clay (opposite of green)",     base: "#ccaea4", light: "rgba(220,198,190,A)", dark: "rgba(180,146,132,A)", grout: "#dcc9c1" },
   white:    { name: "Warm white (neutral)",               base: "#e6e2db", light: "rgba(246,244,240,A)", dark: "rgba(210,201,188,A)", grout: "#eeebe6" },
+  terrazzo: { name: "Light-grey terrazzo (ref. #5, #6)", base: "#c9c6bf", light: "rgba(228,226,221,A)", dark: "rgba(120,116,110,A)", grout: "#d8d6d0", chips: true },
   beige:    { name: "Beige (previous)",                    base: "#9a886b", light: "rgba(176,160,130,A)", dark: "rgba(118,101,76,A)",  grout: "#bfb39d" },
 };
 Object.entries(BIGTILES).forEach(([k, c]) => {
@@ -279,14 +272,47 @@ Object.entries(BIGTILES).forEach(([k, c]) => {
       g.fillStyle = (rnd() > 0.5 ? c.dark : c.light).replace("A", (0.10 + rnd() * 0.18).toFixed(3));
       const sz = 0.6 + rnd() * 1.8; g.fillRect(rnd() * w, rnd() * h, sz, sz);
     }
+    if (c.chips) for (let i = 0; i < 900; i++) {          // terrazzo: irregular darker/lighter stone chips
+      const cx = rnd() * w, cy = rnd() * h, r = 0.6 + rnd() * rnd() * 3.2, tone = rnd();
+      g.fillStyle = tone < 0.55 ? `rgba(95,92,87,${0.35 + rnd() * 0.4})` : tone < 0.8 ? `rgba(150,146,138,${0.4 + rnd() * 0.3})` : `rgba(240,238,233,${0.5 + rnd() * 0.4})`;
+      g.beginPath();
+      for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + rnd() * 0.6, rr = r * (0.6 + rnd() * 0.6);
+        k ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+      g.closePath(); g.fill();
+    }
     g.strokeStyle = c.grout; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);   // thin grout joint
   }) };
   MATP_EXTRA["bigtile_" + k] = { roughness: 0.55 };
 });
 let BIGKEY = "bigtile_lavender";
+// Small vertical tile colourways (comments #5–#7: lighter, muted, variegated greens)
+const GREENS = {
+  bottle: { name: "Bottle green (current)",      shades: ["#123f2b", "#164a33", "#1b5439", "#14432f"], hi: "#1e5a3e", grout: "#c9cfc6" },
+  sage:   { name: "Sage green (ref. #5, #6)",     shades: ["#4c5e4c", "#55684f", "#475747", "#5e6f58", "#506250"], hi: "#66785f", grout: "#cfd2cb" },
+  olive:  { name: "Olive / moss (ref. #7)",       shades: ["#3c4a21", "#455527", "#35421c", "#4f5f2b", "#414f25"], hi: "#5a6a32", grout: "#d6d3c4" },
+};
+Object.entries(GREENS).forEach(([k, c]) => {
+  TEX["tile_" + k] = { u:0.30, v:0.60, t: canvasTex(512, 1024, (g, w, h) => {
+    g.fillStyle = c.grout; g.fillRect(0, 0, w, h);
+    const TW = 128, TH = 512;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) {
+      const x = i * TW + 4, y = r * TH + 4, tw = TW - 8, th = TH - 8;
+      const shade = c.shades[(rnd() * c.shades.length) | 0];
+      const gr = g.createLinearGradient(x, y, x + tw * (0.3 + rnd() * 0.7), y + th);   // glaze runs a bit uneven
+      gr.addColorStop(0, shade); gr.addColorStop(0.35 + rnd() * 0.3, c.hi); gr.addColorStop(1, shade);
+      g.fillStyle = gr; g.fillRect(x, y, tw, th);
+      g.globalAlpha = 0.55; g.fillStyle = shade; g.fillRect(x, y, tw, th); g.globalAlpha = 1;
+      for (let q = 0; q < 26; q++) {                                                  // glaze pooling clouds
+        g.fillStyle = rnd() > 0.5 ? "rgba(10,30,15,0.07)" : "rgba(170,190,150,0.05)";
+        g.beginPath(); g.arc(x + rnd() * tw, y + rnd() * th, 6 + rnd() * 24, 0, Math.PI * 2); g.fill();
+      }
+    }
+  }) };
+  MATP_EXTRA["tile_" + k] = { physical:true, roughness:0.18, clearcoat:1, clearcoatRoughness:0.04, normal:"tileN", normalScale:0.9 };
+});
+let GREENKEY = "tile_bottle";
 // physical properties per finish
 const MATP = {
-  tile:   { physical:true, roughness:0.18, clearcoat:1, clearcoatRoughness:0.04, normal:"tileN", normalScale:0.9 },
   walnut: { roughness:0.5 },   marble: { roughness:0.25 },  floor: { roughness:0.45 },
   ...MATP_EXTRA,
   rug:    { roughness:1 },     stone:  { roughness:0.92 },   stoneLight: { roughness:0.4 },
@@ -314,7 +340,7 @@ function panel(x1, y1, x2, y2, z0, z1, key, label) {
   if (label) { p.userData.label = label; pickables.push(p); }
 }
 // wall finish helpers
-const tileWall   = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "tile",    "green gloss tiles 7.5×30");
+const tileWall   = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, GREENKEY, "small gloss tiles 7.5×30 — " + GREENS[GREENKEY.slice(5)].name);
 const bigWall    = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, BIGKEY, "large stone-look tiles 120×60 — " + BIGTILES[BIGKEY.slice(8)].name);
 const walnutWall = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, "walnut",  "walnut wall panelling");
 // Bathroom finishes (owner, 2026-11-22, round 2):
@@ -448,7 +474,7 @@ function addItem(it, WH) {
   switch (k) {
     case "bath": {
       if (S) {   // tiled apron, white tub inside
-        box(x,y,w,h,0,0.56,tmat("tile",Math.max(w,h),0.56),"bath, front panel tiled");
+        box(x,y,w,h,0,0.56,tmat(GREENKEY,Math.max(w,h),0.56),"bath, front panel tiled");
         box(x,y,w,h,0.56,0.58,WHT,label);
       } else box(x,y,w,h,0,0.58,WHT,label);
       box(x+0.08,y+0.08,w-0.16,h-0.16,0.581,0.585,0xdfe9ef,label);           // inner tub
@@ -603,6 +629,11 @@ sel.onchange = () => { try{localStorage.setItem("flat60-bath-v2",sel.value);}cat
 document.getElementById("ceil").onchange = build;
 document.getElementById("cut").onchange = build;
 document.getElementById("finish").onchange = build;
+{ const gs = document.getElementById("greentile");
+  Object.entries(GREENS).forEach(([k, c]) => { const o = document.createElement("option"); o.value = k; o.textContent = c.name; gs.appendChild(o); });
+  try { const v = localStorage.getItem("flat60-green"); if (v && GREENS[v]) gs.value = v; } catch (e) {}
+  GREENKEY = "tile_" + gs.value;
+  gs.onchange = () => { GREENKEY = "tile_" + gs.value; try { localStorage.setItem("flat60-green", gs.value); } catch (e) {} build(); }; }
 { const bs = document.getElementById("bigtile");
   Object.entries(BIGTILES).forEach(([k, c]) => { const o = document.createElement("option"); o.value = k; o.textContent = c.name; bs.appendChild(o); });
   try { const v = localStorage.getItem("flat60-bigtile"); if (v && BIGTILES[v]) bs.value = v; } catch (e) {}
