@@ -24,6 +24,8 @@
   <label>Ceiling <input id="ceil" type="number" step="0.05" min="2.4" max="3.2" value="2.70" style="width:60px" title="Z1–Z4 (provisional)"> m</label>
   <label>Finish <select id="finish"><option value="style">Green tiles + walnut + brass</option><option value="plain">Plain (layout only)</option></select></label>
   <label>Wood <select id="wood"></select></label>
+  <label>Floor <select id="floortile"></select></label>
+  <label>Small tiles height <select id="tileheight"><option value="band">2 rows above the bath</option><option value="full">To the ceiling (bath walls)</option></select></label>
   <label>Small tiles <select id="greentile"></select></label>
   <label>Big tiles <select id="bigtile"></select></label>
   <label>Lighting <select id="lighting"><option value="standard">Standard</option><option value="baked">Realistic — bathroom (Blender, prototype)</option></select></label>
@@ -262,6 +264,10 @@ const BIGTILES = {
   white:    { name: "Warm white (neutral)",               base: "#e6e2db", light: "rgba(246,244,240,A)", dark: "rgba(210,201,188,A)", grout: "#eeebe6" },
   terrazzo: { name: "Light-grey terrazzo (ref. #5, #6)", base: "#c9c6bf", light: "rgba(228,226,221,A)", dark: "rgba(120,116,110,A)", grout: "#d8d6d0", chips: true },
   beige:    { name: "Beige (previous)",                    base: "#9a886b", light: "rgba(176,160,130,A)", dark: "rgba(118,101,76,A)",  grout: "#bfb39d" },
+  calacatta:{ name: "Calacatta white marble (Deco)",      base: "#eeebe6", light: "rgba(250,249,246,A)", dark: "rgba(200,194,186,A)", grout: "#f1efeb", veins: "rgba(140,134,128,A)", rough: 0.22 },
+  nero:     { name: "Nero black marble (Neo Deco)",       base: "#1d1d1f", light: "rgba(70,70,74,A)",    dark: "rgba(8,8,10,A)",      grout: "#2b2b2d", veins: "rgba(232,230,226,A)", rough: 0.2 },
+  bone:     { name: "Bone / cream (mid-century)",         base: "#e3d8c4", light: "rgba(242,236,224,A)", dark: "rgba(196,182,158,A)", grout: "#ece5d8" },
+  blush:    { name: "Blush plaster",                       base: "#d8beb2", light: "rgba(230,212,204,A)", dark: "rgba(184,150,138,A)", grout: "#e2d0c8" },
 };
 Object.entries(BIGTILES).forEach(([k, c]) => {
   TEX["bigtile_" + k] = { u:1.2, v:0.6, t: canvasTex(512, 256, (g, w, h) => {
@@ -284,9 +290,19 @@ Object.entries(BIGTILES).forEach(([k, c]) => {
         k ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
       g.closePath(); g.fill();
     }
+    if (c.veins) for (let i = 0; i < 7; i++) {           // marble veins: long wandering, branching strokes
+      let x = rnd() * w, y = rnd() < 0.5 ? 0 : rnd() * h, ang = (rnd() - 0.5) * 1.2 + (rnd() < 0.5 ? 0.6 : -0.6);
+      const width = 0.6 + rnd() * 2.2, a = (0.25 + rnd() * 0.45).toFixed(2);
+      g.strokeStyle = c.veins.replace("A", a); g.lineWidth = width; g.beginPath(); g.moveTo(x, y);
+      for (let st = 0; st < 60; st++) {
+        ang += (rnd() - 0.5) * 0.5; x += Math.cos(ang) * 9; y += Math.sin(ang) * 9 + 3; g.lineTo(x, y);
+        if (rnd() < 0.06) { g.stroke(); g.lineWidth = width * 0.5; g.beginPath(); g.moveTo(x, y); }
+      }
+      g.stroke();
+    }
     g.strokeStyle = c.grout; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);   // thin grout joint
   }) };
-  MATP_EXTRA["bigtile_" + k] = { roughness: 0.55 };
+  MATP_EXTRA["bigtile_" + k] = { roughness: c.rough ?? 0.55 };
 });
 let BIGKEY = "bigtile_lavender";
 // Small vertical tile colourways (comments #5–#7: lighter, muted, variegated greens)
@@ -294,8 +310,42 @@ const GREENS = {
   bottle: { name: "Bottle green (current)",      shades: ["#123f2b", "#164a33", "#1b5439", "#14432f"], hi: "#1e5a3e", grout: "#c9cfc6" },
   sage:   { name: "Sage green (ref. #5, #6)",     shades: ["#4c5e4c", "#55684f", "#475747", "#5e6f58", "#506250"], hi: "#66785f", grout: "#cfd2cb" },
   olive:  { name: "Olive / moss (ref. #7)",       shades: ["#3c4a21", "#455527", "#35421c", "#4f5f2b", "#414f25"], hi: "#5a6a32", grout: "#d6d3c4" },
+  forest: { name: "Forest green, white grout (ref.)", shades: ["#1a432e", "#1f4c34", "#163c29", "#235239"], hi: "#285a3e", grout: "#e9e9e4" },
+  teal:   { name: "Deep teal (Neo Deco)",          shades: ["#0f3d44", "#12474f", "#0c353b", "#165159"], hi: "#1b5c64", grout: "#d3d9d8" },
+  oxblood:{ name: "Oxblood / burgundy (vertical)", shades: ["#5a1416", "#651a1b", "#4f1113", "#6e1f1f"], hi: "#7a2826", grout: "#d9cfc8" },
+  oxsq:   { name: "Oxblood 5×5 mosaic (ref.)",     shades: ["#5a1416", "#651a1b", "#4f1113", "#6e1f1f", "#5f1718"], hi: "#7a2826", grout: "#ece6df", square: true },
+  emsq:   { name: "Emerald 5×5 mosaic (Deco)",     shades: ["#0f4a3a", "#125544", "#0c4032", "#176049"], hi: "#1d6b52", grout: "#e6e6e0", square: true },
 };
-Object.entries(GREENS).forEach(([k, c]) => {
+// square 5 x 5 cm mosaic normal map: 6 x 6 tiles -> covers 0.30 x 0.30 m
+TEX.tileNsq = { u:0.30, v:0.30, t: dataTex(512, 512, (g, w, h) => {
+  g.fillStyle = "rgb(128,128,255)"; g.fillRect(0, 0, w, h);
+  const T = w / 6;
+  for (let r = 0; r < 6; r++) for (let i = 0; i < 6; i++) {
+    const x = i * T + 3, y = r * T + 3, s = T - 6;
+    g.fillStyle = "rgba(" + ((128 + (rnd() - 0.5) * 30) | 0) + "," + ((128 + (rnd() - 0.5) * 30) | 0) + ",250,0.5)"; g.fillRect(x, y, s, s);
+    g.fillStyle = "rgb(70,128,225)";  g.fillRect(x, y, 3, s);   g.fillStyle = "rgb(186,128,225)"; g.fillRect(x + s - 3, y, 3, s);
+    g.fillStyle = "rgb(128,186,225)"; g.fillRect(x, y, s, 3);   g.fillStyle = "rgb(128,70,225)";  g.fillRect(x, y + s - 3, s, 3);
+  } }) };
+const glazeTile = (g, c, x, y, tw, th) => {                     // one glazed tile with its own shade + uneven glaze
+  const shade = c.shades[(rnd() * c.shades.length) | 0];
+  const gr = g.createLinearGradient(x, y, x + tw * (0.3 + rnd() * 0.7), y + th);
+  gr.addColorStop(0, shade); gr.addColorStop(0.35 + rnd() * 0.3, c.hi); gr.addColorStop(1, shade);
+  g.fillStyle = gr; g.fillRect(x, y, tw, th);
+  g.globalAlpha = 0.55; g.fillStyle = shade; g.fillRect(x, y, tw, th); g.globalAlpha = 1;
+  for (let q = 0; q < Math.max(4, (tw * th) / 2500); q++) {
+    g.fillStyle = rnd() > 0.5 ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.05)";
+    g.beginPath(); g.arc(x + rnd() * tw, y + rnd() * th, 4 + rnd() * Math.min(tw, th) * 0.3, 0, Math.PI * 2); g.fill();
+  }
+};
+Object.entries(GREENS).filter(([, c]) => c.square).forEach(([k, c]) => {
+  TEX["tile_" + k] = { u:0.30, v:0.30, t: canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = c.grout; g.fillRect(0, 0, w, h);
+    const T = w / 6;
+    for (let r = 0; r < 6; r++) for (let i = 0; i < 6; i++) glazeTile(g, c, i * T + 3, r * T + 3, T - 6, T - 6);
+  }) };
+  MATP_EXTRA["tile_" + k] = { physical:true, roughness:0.18, clearcoat:1, clearcoatRoughness:0.04, normal:"tileNsq", normalScale:0.9 };
+});
+Object.entries(GREENS).filter(([, c]) => !c.square).forEach(([k, c]) => {
   TEX["tile_" + k] = { u:0.30, v:0.60, t: canvasTex(512, 1024, (g, w, h) => {
     g.fillStyle = c.grout; g.fillRect(0, 0, w, h);
     const TW = 128, TH = 512;
@@ -321,6 +371,9 @@ const WOODS = {
   oak:     { name: "Natural oak",             base: "#b48a5a", bandL: "214,178,128", bandD: "140,100,60", line: "112,78,44", lineL: "226,196,150", pore: "96,66,38", arches: 4, amp: 10 },
   smoked:  { name: "Smoked oak",              base: "#6e5440", bandL: "150,118,90", bandD: "62,46,34",  line: "48,34,24",  lineL: "170,138,108", pore: "40,28,20", arches: 4, amp: 10 },
   teak:    { name: "Warm teak (ref. #5, #6)", base: "#7a4a2a", bandL: "168,110,66", bandD: "70,40,22",  line: "58,32,16",  lineL: "184,128,82",  pore: "50,28,14", arches: 2, amp: 7 },
+  whiteoak:{ name: "White oak (ref. oxblood bath)", base: "#c9a87c", bandL: "232,206,168", bandD: "160,124,84", line: "130,96,60", lineL: "236,214,180", pore: "120,88,54", arches: 4, amp: 8 },
+  mahogany:{ name: "Mahogany (Deco)",          base: "#5b2419", bandL: "140,62,44",  bandD: "52,18,12",  line: "40,12,8",   lineL: "150,78,58",   pore: "36,10,6",  arches: 2, amp: 6 },
+  ebony:   { name: "Ebonised black oak",       base: "#1f1a17", bandL: "74,64,56",   bandD: "12,10,9",   line: "8,7,6",     lineL: "96,84,74",    pore: "6,5,4",    arches: 3, amp: 9 },
   wenge:   { name: "Dark wenge",              base: "#2f241e", bandL: "84,66,54",   bandD: "16,12,10",  line: "12,9,7",    lineL: "100,82,68",   pore: "10,8,6",   arches: 0, amp: 4 },
 };
 function woodTex(c) {
@@ -368,6 +421,63 @@ function woodTex(c) {
 }
 Object.entries(WOODS).forEach(([k, c]) => { TEX["wood_" + k] = woodTex(c); MATP_EXTRA["wood_" + k] = { roughness: 0.5 }; });
 let WOODKEY = "wood_walnut";
+// Bathroom floor options
+const FLOORS = {
+  floor:     "Cream 60×60 (current)",
+  hexflower: "White hex mosaic, oxblood flowers (ref.)",
+  checker:   "Black & white checker (Deco)",
+  terrazzo:  "Light-grey terrazzo 120×60",
+  emerald:   "Emerald 5×5 mosaic",
+  planks:    "Light oak planks (wood-look)",
+};
+// white hex mosaic (2.5 cm hexes) with 7-hex oxblood rosettes, seamless
+TEX.floor_hexflower = (() => {
+  const n = 18, W = 512, r = W / (n * Math.sqrt(3)), m = 24, H = Math.round(m * 1.5 * r), dx = Math.sqrt(3) * r;
+  const centres = [];
+  for (let j = 0; j < m; j++) for (let i = 0; i < n; i++)
+    if ((j % 6 === 0 && i % 6 === 0) || (j % 6 === 3 && i % 6 === 3)) centres.push([i * dx + (j % 2 ? dx / 2 : 0), j * 1.5 * r]);
+  const near = (x, y) => centres.some(([cx, cy]) => { for (const ox of [-W, 0, W]) for (const oy of [-H, 0, H])
+    if (Math.hypot(x - cx - ox, y - cy - oy) < dx * 1.1) return true; return false; });
+  return { u: 0.45, v: 0.45 * H / W, t: canvasTex(W, H, (g) => {
+    g.fillStyle = "#d8d4cc"; g.fillRect(0, 0, W, H);
+    for (let j = -1; j <= m; j++) for (let i = -1; i <= n; i++) {
+      const x = i * dx + (((j % 2) + 2) % 2 ? dx / 2 : 0), y = j * 1.5 * r, red = near(x, y);
+      g.fillStyle = red ? ["#6a1a1b", "#5e1617", "#741f1f"][(rnd() * 3) | 0] : ["#f3f1ec", "#efece6", "#f6f4f0"][(rnd() * 3) | 0];
+      g.beginPath();
+      for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3, rr = r - 1.3; k ? g.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)) : g.moveTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
+      g.closePath(); g.fill();
+    }
+  }) };
+})();
+TEX.floor_checker = { u: 0.6, v: 0.6, t: canvasTex(256, 256, (g, w, h) => {      // 30 x 30 cm black & white
+  g.fillStyle = "#bdb9b1"; g.fillRect(0, 0, w, h);
+  [[0, 0, "#f1eee8"], [128, 0, "#1c1c1d"], [0, 128, "#1c1c1d"], [128, 128, "#f1eee8"]].forEach(([x, y, c]) => { g.fillStyle = c; g.fillRect(x + 1.5, y + 1.5, 125, 125); });
+  for (let i = 0; i < 500; i++) { g.fillStyle = "rgba(128,128,128,0.05)"; g.fillRect(rnd() * w, rnd() * h, 2, 2); }
+}) };
+TEX.floor_terrazzo = { u: 1.2, v: 0.6, t: TEX.bigtile_terrazzo.t };
+TEX.floor_emerald  = { u: 0.30, v: 0.30, t: TEX.tile_emsq.t };
+TEX.floor_planks = { u: 0.8, v: 1.6, t: canvasTex(512, 1024, (g, w, h) => {       // 20 cm wide oak planks, staggered joints
+  const PW = 128;
+  for (let i = 0; i < 4; i++) {
+    let y = -rnd() * 512;
+    while (y < h) {
+      const len = 380 + rnd() * 260, tint = (rnd() - 0.5) * 26;
+      g.fillStyle = `rgb(${182 + tint | 0},${142 + tint | 0},${98 + tint | 0})`; g.fillRect(i * PW, y, PW, len);
+      for (let q = 0; q < 26; q++) {
+        const x0 = i * PW + rnd() * PW, a = 0.05 + rnd() * 0.12;
+        g.strokeStyle = rnd() > 0.5 ? `rgba(120,86,52,${a})` : `rgba(235,214,180,${a})`; g.lineWidth = 0.6 + rnd() * 1.8;
+        g.beginPath(); g.moveTo(x0, y); g.bezierCurveTo(x0 + (rnd() - 0.5) * 8, y + len / 3, x0 + (rnd() - 0.5) * 8, y + 2 * len / 3, x0 + (rnd() - 0.5) * 6, y + len); g.stroke();
+      }
+      g.fillStyle = "rgba(70,50,30,0.55)"; g.fillRect(i * PW, y, PW, 2);                     // end joint
+      y += len;
+    }
+    g.fillStyle = "rgba(70,50,30,0.6)"; g.fillRect(i * PW, 0, 2, h);                         // long joint
+  }
+}) };
+MATP_EXTRA.floor_hexflower = { roughness: 0.25 }; MATP_EXTRA.floor_checker = { roughness: 0.3 };
+MATP_EXTRA.floor_terrazzo = { roughness: 0.5 };   MATP_EXTRA.floor_planks = { roughness: 0.55 };
+MATP_EXTRA.floor_emerald = { physical: true, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.05, normal: "tileNsq", normalScale: 0.9 };
+let FLOORKEY = "floor", TILEFULL = false;
 // physical properties per finish
 const MATP = {
   walnut: { roughness:0.5 },   marble: { roughness:0.25 },  floor: { roughness:0.45 },
@@ -408,10 +518,13 @@ const walnutWall = (x1, y1, x2, y2, z0, z1) => panel(x1, y1, x2, y2, z0, z1, WOO
 function bathroomFinishes(WH) {
   const o = 0.004, BAND = 1.20;
   bigWall(3.85, 5.59 + o, 6.49, 5.59 + o, 0, WH);                 // bedroom wall (vanity, towel rail, bath head end)
+  const upper = TILEFULL ? tileWall : bigWall;                     // "Small tiles height": band or up to the ceiling
   tileWall(6.49 - o, 5.59, 6.49 - o, 7.395, 0, BAND);             // outer wall behind the bath ("middle")
-  bigWall(6.49 - o, 5.59, 6.49 - o, 7.395, BAND, WH);
-  tileWall(5.42, 7.395 - o, 6.49, 7.395 - o, 0, BAND);            // bath end ("right") + strip between walnut and bath
-  bigWall(5.42, 7.395 - o, 6.49, 7.395 - o, BAND, WH);
+  upper(6.49 - o, 5.59, 6.49 - o, 7.395, BAND, WH);
+  tileWall(5.69, 7.395 - o, 6.49, 7.395 - o, 0, BAND);            // bath end ("right")
+  upper(5.69, 7.395 - o, 6.49, 7.395 - o, BAND, WH);
+  tileWall(5.42, 7.395 - o, 5.69, 7.395 - o, 0, BAND);            // strip between the wood wall and the bath (band only)
+  bigWall(5.42, 7.395 - o, 5.69, 7.395 - o, BAND, WH);
   walnutWall(4.87, 7.395 - o, 5.42, 7.395 - o, 0, 1.20);          // toilet wall: wood up to the frame top; the cabinet above is wood too
   bigWall(3.85, 7.88 - o, 4.47, 7.88 - o, 0, WH);                 // corridor wall behind the laundry bay
   bigWall(3.85 + o, 5.59, 3.85 + o, 6.18, 0, WH);                 // west wall, either side of the doorway
@@ -546,7 +659,7 @@ function build() {
 
   // floors
   box(0,0,6.49,7.88,-0.02,0,C.floor);
-  box(3.85,5.59,2.64,2.29,-0.019,0.001, S ? tmat("floor",2.64,2.29) : C.tile,"bathroom floor (cream tiles, floor heating)");
+  box(3.85,5.59,2.64,2.29,-0.019,0.001, S ? tmat(FLOORKEY,2.64,2.29) : C.tile,"bathroom floor — " + FLOORS[FLOORKEY.replace(/^floor_/, "")] + " (floor heating)");
   const b = P.balcony; box(b.x,b.y,b.w,b.h,-0.12,-0.02,C.box,"balcony");
   box(b.x,b.y,b.w,0.03,-0.02,1.0,C.glass,"balcony railing",{transparent:true,opacity:0.35});
 
@@ -828,6 +941,16 @@ document.getElementById("lighting").onchange = e => {
   if (!BAKE_ON) { build(); return; }
   loadBake().then(build).catch(err => { alert("Baked lighting not available yet (" + err + ")"); e.target.value = "standard"; BAKE_ON = false; build(); });
 };
+{ const fs = document.getElementById("floortile");
+  Object.entries(FLOORS).forEach(([k, n]) => { const o = document.createElement("option"); o.value = k; o.textContent = n; fs.appendChild(o); });
+  try { const v = localStorage.getItem("flat60-floor"); if (v && FLOORS[v]) fs.value = v; } catch (e) {}
+  const fk = v => v === "floor" ? "floor" : "floor_" + v;
+  FLOORKEY = fk(fs.value);
+  fs.onchange = () => { FLOORKEY = fk(fs.value); try { localStorage.setItem("flat60-floor", fs.value); } catch (e) {} build(); };
+  const th = document.getElementById("tileheight");
+  try { const v = localStorage.getItem("flat60-tileheight"); if (v) th.value = v; } catch (e) {}
+  TILEFULL = th.value === "full";
+  th.onchange = () => { TILEFULL = th.value === "full"; try { localStorage.setItem("flat60-tileheight", th.value); } catch (e) {} build(); }; }
 { const ws = document.getElementById("wood");
   Object.entries(WOODS).forEach(([k, c]) => { const o = document.createElement("option"); o.value = k; o.textContent = c.name; ws.appendChild(o); });
   try { const v = localStorage.getItem("flat60-wood"); if (v && WOODS[v]) ws.value = v; } catch (e) {}
