@@ -26,7 +26,7 @@
   <label>Wood <select id="wood"></select></label>
   <label>Small tiles <select id="greentile"></select></label>
   <label>Big tiles <select id="bigtile"></select></label>
-  <label>Lighting <select id="lighting"><option value="standard">Standard</option><option value="baked">Baked — bathroom (prototype)</option></select></label>
+  <label>Lighting <select id="lighting"><option value="standard">Standard</option><option value="baked">Realistic — bathroom (Blender, prototype)</option></select></label>
   <label><input id="cut" type="checkbox"> Cut walls at 1.2 m</label>
   <span>View:</span>
   <button data-v="bath">Bathroom</button>
@@ -486,32 +486,52 @@ function bakeCandidates() {                                          // same lis
   });
   return out;
 }
-let BAKED = null, BAKE_ON = false;                                   // { byKey: {key: geometry}, lightmap }
+let BAKED = null, BAKE_ON = false;                                   // { byKey: {name: {geometry, material}}, lightmap, probe }
 function loadBake() {
   if (BAKED) return Promise.resolve(BAKED);
-  const v = "?v=" + Date.now();
+  const v = "?v=" + Date.now(), hdr = url => new Promise((res, rej) => new THREE.RGBELoader().setDataType(THREE.HalfFloatType).load(url + v, res, undefined, rej));
   return Promise.all([
     new Promise((res, rej) => new THREE.GLTFLoader().load("bake/bathroom_baked.glb" + v, res, undefined, rej)),
-    new Promise((res, rej) => new THREE.RGBELoader().setDataType(THREE.HalfFloatType).load("bake/lightmap.hdr" + v, res, undefined, rej)),
-  ]).then(([gltf, lm]) => {
+    hdr("bake/lightmap.hdr"), hdr("bake/probe.hdr"),
+  ]).then(([gltf, lm, probeEq]) => {
     lm.flipY = false; lm.encoding = THREE.LinearEncoding;
+    probeEq.mapping = THREE.EquirectangularReflectionMapping;
+    const pm = new THREE.PMREMGenerator(renderer); const probe = pm.fromEquirectangular(probeEq).texture; pm.dispose();
     const byKey = {};
-    gltf.scene.traverse(o => { if (o.isMesh && o.material) byKey[o.material.name] = o.geometry; });
-    return (BAKED = { byKey, lightmap: lm });
+    gltf.scene.traverse(o => { if (o.isMesh && o.material) byKey[o.material.name] = { geometry: o.geometry, material: o.material }; });
+    return (BAKED = { byKey, lightmap: lm, probe });
   });
 }
+// Baked mode: every static bathroom surface is swapped for Blender's version (real tub/WC/basin shapes, bevelled
+// edges) lit by the lightmap and reflecting the 360° probe of the actual room. Props (x_* materials) are added.
 function applyBake() {
   if (!BAKE_ON || !BAKED || !S) return;
+  const add = (g, m, label) => {
+    m.lightMap = BAKED.lightmap; m.lightMapIntensity = BAKE_INTENSITY;
+    m.envMap = BAKED.probe; m.envMapIntensity = BAKE_ENV;
+    const mesh = new THREE.Mesh(g, m); mesh.userData.baked = true;
+    if (label) { mesh.userData.label = label; pickables.push(mesh); }
+    world.add(mesh);
+  };
   bakeCandidates().forEach((o, i) => {
-    const g = BAKED.byKey["b" + i]; if (!g || !g.attributes.uv2) return;
-    const m = o.material.clone(); m.lightMap = BAKED.lightmap; m.lightMapIntensity = BAKE_INTENSITY;
-    m.envMapIntensity = 0.45;                                        // keep reflections, avoid double diffuse light
-    const b = new THREE.Mesh(g, m); b.userData.baked = true; b.userData.label = o.userData.label;
-    if (o.userData.label) pickables.push(b);
-    o.visible = false; world.add(b);
+    o.visible = false;                                               // removed in Blender (e.g. old bath boxes) -> stays hidden
+    const e = BAKED.byKey["b" + i]; if (!e || !e.geometry.attributes.uv2) return;
+    add(e.geometry, o.material.clone(), o.userData.label);
+  });
+  Object.entries(BAKED.byKey).forEach(([name, e]) => {                // props made in Blender
+    if (name.startsWith("x_") && e.geometry.attributes.uv2) add(e.geometry, e.material.clone(), name.slice(2).replace(/_/g, " "));
+  });
+  world.traverse(o => {                                              // mirror, glass, moving parts reflect the real room too
+    if (!o.isMesh || o.userData.baked || !o.material || o.material.isMeshBasicMaterial) return;
+    const c = o.getWorldPosition(new THREE.Vector3());
+    if (c.x > BAKE_BOX.x0 && c.x < BAKE_BOX.x1 && c.z > BAKE_BOX.y0 && c.z < BAKE_BOX.y1) {
+      o.material = o.material.clone(); o.material.envMap = BAKED.probe;
+      if (o.material.metalness === 1 && o.material.roughness < 0.1) o.material.envMapIntensity = 1.0;   // mirror
+    }
   });
 }
-let BAKE_INTENSITY = 1.5 / Math.PI;          // three.js multiplies lightmaps by π
+let BAKE_ENV = 0.55;
+let BAKE_INTENSITY = 1.25 / Math.PI;         // three.js multiplies lightmaps by π
 
 function build() {
   scene.remove(world); world = new THREE.Group(); scene.add(world); pickables.length = 0;
