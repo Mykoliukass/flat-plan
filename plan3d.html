@@ -31,7 +31,7 @@
   <label>Small tiles <select id="greentile"></select></label>
   <label>Big tiles <select id="bigtile"></select></label>
   <label>Lighting <select id="lighting"><option value="standard">Standard</option><option value="baked">Realistic — bathroom (Blender, prototype)</option></select></label>
-  <label><input id="cut" type="checkbox"> Cut walls at 1.2 m</label>
+  <label><input id="cut" type="checkbox"> Section cut at <input id="cuth" type="range" min="0.6" max="2.6" step="0.05" value="1.2" style="width:90px"> <span id="cutv">1.20</span> m <span id="cutnote" style="display:none;color:#b07d1e">(Realistic paused while cut)</span></label>
   <span>View:</span>
   <button data-v="bath">Bathroom</button>
   <button data-v="door">From the doorway</button>
@@ -604,7 +604,7 @@ function bakeCandidates() {                                          // same lis
   });
   return out;
 }
-let BAKED = null, BAKE_ON = false;                                   // { byKey: {name: {geometry, material}}, lightmap, probe }
+let BAKED = null, BAKE_ON = false, CUT_ON = false;                                   // { byKey: {name: {geometry, material}}, lightmap, probe }
 function loadBake() {
   if (BAKED) return Promise.resolve(BAKED);
   const v = "?v=" + Date.now(), hdr = url => new Promise((res, rej) => new THREE.RGBELoader().setDataType(THREE.HalfFloatType).load(url + v, res, undefined, rej));
@@ -623,7 +623,7 @@ function loadBake() {
 // Baked mode: every static bathroom surface is swapped for Blender's version (real tub/WC/basin shapes, bevelled
 // edges) lit by the lightmap and reflecting the 360° probe of the actual room. Props (x_* materials) are added.
 function applyBake() {
-  if (!BAKE_ON || !BAKED || !S) return;
+  if (!BAKE_ON || CUT_ON || !BAKED || !S) return;          // realistic meshes are paused while the section cut is on
   const add = (g, m, label) => {
     m.lightMap = BAKED.lightmap; m.lightMapIntensity = BAKE_INTENSITY;
     m.envMap = BAKED.probe; m.envMapIntensity = BAKE_ENV;
@@ -654,7 +654,13 @@ let BAKE_INTENSITY = 1.25 / Math.PI;         // three.js multiplies lightmaps by
 function build() {
   scene.remove(world); world = new THREE.Group(); scene.add(world); pickables.length = 0;
   const H = Math.max(2.3, parseFloat(document.getElementById("ceil").value) || 2.7);
-  const WH = document.getElementById("cut").checked ? 1.2 : H;     // displayed wall height
+  // Section cut (dollhouse view): a horizontal clipping plane removes EVERYTHING above the cut height
+  // (walls, Blender meshes, fixtures, glass, mirror …); walls are also rebuilt at that height so they get solid tops.
+  const CUT = document.getElementById("cut").checked, CUTH = parseFloat(document.getElementById("cuth").value) || 1.2;
+  const WH = CUT ? Math.min(CUTH, H) : H;                           // displayed wall height
+  CUT_ON = CUT;
+  document.getElementById("cutnote").style.display = CUT && BAKE_ON ? "" : "none";
+  renderer.clippingPlanes = CUT ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), WH + 0.002)] : [];
   const HT = P.heights || {}, DOOR = HT.doorway || 2.05, SILL = 0, HEAD = HT.windowTop || 2.20;   // measured: windows go to the floor
 
   movers = [];
@@ -754,12 +760,13 @@ function build() {
     [[4.32, 6.25], [5.15, 6.95], [6.09, 6.40]].forEach(([lx, ly]) => {
       const d = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24), new THREE.MeshBasicMaterial({color: new THREE.Color(3, 2.6, 2.1)}));
       d.rotation.x = Math.PI / 2; d.position.set(lx, H - 0.002, ly); world.add(d);
-      if (!BAKE_ON) { const L = new THREE.PointLight(lin(0xffe2c2), 0.55, 4.5, 2); L.position.set(lx, H - 0.08, ly); world.add(L); }
+      if (!BAKE_ON || CUT_ON) { const L = new THREE.PointLight(lin(0xffe2c2), 0.55, 4.5, 2); L.position.set(lx, H - 0.08, ly); world.add(L); }
     });
   }
   items.forEach(it => addItem(it, WH));
   applyBake();
-  if (BAKE_ON && S && BAKED) { hemi.intensity = 0.12; sun.intensity = 0.15; } else { sun.intensity = 0.5; }
+  if (CUT) world.traverse(o => { if (o.isMesh && !o.userData.baked && o.material && !o.material.isMeshBasicMaterial) o.material.side = THREE.DoubleSide; });  // cut objects look solid, not hollow
+  if (BAKE_ON && !CUT_ON && S && BAKED) { hemi.intensity = 0.12; sun.intensity = 0.15; } else { sun.intensity = 0.5; }
 }
 
 function addItem(it, WH) {
@@ -940,6 +947,8 @@ try { const v=localStorage.getItem("flat60-bath-v2"); if (v && P.layouts.bathroo
 sel.onchange = () => { try{localStorage.setItem("flat60-bath-v2",sel.value);}catch(e){} build(); };
 document.getElementById("ceil").onchange = build;
 document.getElementById("cut").onchange = build;
+{ const ch = document.getElementById("cuth"), cv = document.getElementById("cutv");
+  ch.oninput = () => { cv.textContent = (+ch.value).toFixed(2); document.getElementById("cut").checked = true; build(); }; }
 document.getElementById("finish").onchange = build;
 document.getElementById("lighting").onchange = e => {
   BAKE_ON = e.target.value === "baked";
