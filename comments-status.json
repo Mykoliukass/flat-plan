@@ -4,5 +4,23 @@
     "date": "2026-11-22",
     "decision": "Agreed — the vanity goes down to the floor.",
     "note": "Floor-standing walnut base with 2 × 2 handleless drawers and a 12 cm stone top with integrated basin."
+  },
+  "5": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Added as a switchable option; final colour pick stays open.",
+    "note": "3D view: Small tiles → Sage green, Big tiles → Light-grey terrazzo (from this reference)."
+  },
+  "6": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Added as a switchable option; final colour pick stays open.",
+    "note": "Same palette as #5 (sage + light-grey speckled stone); also added Wood → Warm teak."
+  },
+  "7": {
+    "status": "done",
+    "date": "2026-11-24",
+    "decision": "Added as a switchable option; final colour pick stays open.",
+    "note": "3D view: Small tiles → Olive / moss; pairs with Big tiles → Warm white."
   }
 }
